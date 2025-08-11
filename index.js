@@ -67,14 +67,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return months[monthStr];
     }
 
-    // ソートアイコンを更新する関数
+    // ソートアイコンとソート中の列のスタイルを更新する関数
     function updateSortIcons() {
         Array.from(clientsTableHeadRow.children).forEach(th => {
             const sortIcon = th.querySelector('.sort-icon');
+            th.classList.remove('sorted-column'); // まず全ての列からクラスを削除
+
             if (sortIcon) {
                 sortIcon.classList.remove('asc', 'desc');
                 if (th.dataset.sortKey === currentSortKey) {
                     sortIcon.classList.add(currentSortDirection);
+                    th.classList.add('sorted-column'); // ソート中の列にクラスを追加
                 }
             }
         });

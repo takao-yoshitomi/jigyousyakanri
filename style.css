@@ -172,6 +172,12 @@ tr:hover {
     background-color: #218838;
 }
 
+/* Sorted Column Style */
+th.sorted-column {
+    color: #007bff; /* 例: 青色に変更 */
+    font-weight: bold;
+}
+
 /* Sort Icon Styles */
 .sort-icon {
     display: inline-block;
@@ -181,8 +187,8 @@ tr:hover {
     vertical-align: middle;
     border-left: 4px solid transparent;
     border-right: 4px solid transparent;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
+    opacity: 1; /* 常に表示 */
+    transition: none; /* トランジションを無効化 */
 }
 
 .sort-icon.asc {
