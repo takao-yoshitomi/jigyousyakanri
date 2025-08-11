@@ -18,6 +18,22 @@
 
         <div class="controls">
             <input type="text" id="search-input" placeholder="事業所名または担当者名で検索">
+
+            <div class="custom-select-wrapper">
+                <div class="custom-select-trigger">すべての担当者</div>
+                <div class="custom-options"></div>
+                <select id="staff-filter" class="custom-select-target" style="display: none;">
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+            </div>
+
+            <div class="custom-select-wrapper">
+                <div class="custom-select-trigger">すべての決算月</div>
+                <div class="custom-options"></div>
+                <select id="month-filter" class="custom-select-target" style="display: none;">
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+            </div>
         </div>
 
         <table id="clients-table">

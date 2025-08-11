@@ -400,8 +400,8 @@ th[data-sort-key]:hover .sort-icon {
 /* Admin Controls */
 .admin-controls {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 30px;
+    right: 30px;
     z-index: 50;
 }
 

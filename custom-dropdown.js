@@ -49,37 +49,21 @@ function initializeCustomDropdown(selectElement) {
         });
     });
 
-    trigger.addEventListener('click', function() {
-        console.log('Trigger clicked!');
-        console.log('optionsList element:', optionsList); // Add this line
-        console.log('optionsList classes BEFORE toggle:', optionsList.classList.value); // Add this line
-        optionsList.classList.toggle('active');
-        console.log('optionsList classes AFTER toggle:', optionsList.classList.value); // Add this line
-        // Also toggle 'active' class on the trigger itself for styling
-        trigger.classList.toggle('active');
-    });
+    trigger.addEventListener('click', function(event) {
+        // Stop the click from bubbling up to the document handler
+        event.stopPropagation(); 
+        
+        // Close all other dropdowns
+        document.querySelectorAll('.custom-select-wrapper .custom-options.active').forEach(function(otherOptions) {
+            if (otherOptions !== optionsList) {
+                otherOptions.classList.remove('active');
+                otherOptions.closest('.custom-select-wrapper').querySelector('.custom-select-trigger').classList.remove('active');
+            }
+        });
 
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!wrapper.contains(e.target)) {
-            optionsList.classList.remove('active');
-            trigger.classList.remove('active'); // Remove active class from trigger when closing
-        }
+        // Toggle the current dropdown
+        optionsList.classList.toggle('active');
+        trigger.classList.toggle('active');
     });
 }
 
-// Initial setup for any dropdowns already in the DOM on load (e.g., in edit.html)
-document.addEventListener('DOMContentLoaded', function() {
-    const selectsToInitialize = document.querySelectorAll('.custom-select-wrapper select');
-    console.log('DOMContentLoaded: Found', selectsToInitialize.length, 'selects to initialize.');
-    selectsToInitialize.forEach(function(select) {
-        // Only initialize if the select element is not 'year-filter' from details.html
-        // or if it already has options (for static dropdowns)
-        if (select.id === 'year-filter' && select.options.length === 0) {
-            // Skip year-filter if it has no options yet, as details.js will populate it
-            console.log('Skipping year-filter initialization on DOMContentLoaded as it has no options yet.');
-            return;
-        }
-        initializeCustomDropdown(select);
-    });
-});
