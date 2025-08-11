@@ -230,12 +230,46 @@ document.addEventListener('DOMContentLoaded', () => {
         renderClients(event.target.value);
     });
 
+    let originalStaffsState = []; // To store the state when modal opens
+    let currentEditingStaffs = []; // To store the currently editing state
+
+    function renderStaffList(staffs) {
+        staffListContainer.innerHTML = '';
+        staffs.forEach(staff => {
+            const staffItem = document.createElement('div');
+            staffItem.classList.add('task-item');
+
+            const staffNoSpan = document.createElement('span');
+            staffNoSpan.textContent = `No. ${staff.no}`;
+            staffNoSpan.classList.add('staff-no');
+
+            const staffNameInput = document.createElement('input');
+            staffNameInput.type = 'text';
+            staffNameInput.value = staff.name;
+            staffNameInput.dataset.no = staff.no;
+            staffNameInput.classList.add('task-input');
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '削除';
+            deleteButton.dataset.no = staff.no;
+            deleteButton.classList.add('delete-task-button');
+
+            staffItem.appendChild(staffNoSpan);
+            staffItem.appendChild(staffNameInput);
+            staffItem.appendChild(deleteButton);
+            staffListContainer.appendChild(staffItem);
+        });
+    }
+
     // 担当者管理ボタンの要素を取得
     const manageStaffButton = document.getElementById('manage-staff-button');
 
     // 担当者管理ボタンのクリックイベント
     manageStaffButton.addEventListener('click', () => {
-        currentEditingStaffs = [...window.staffs]; // 現在の担当者をコピー
+        // Deep copy for comparison on save
+        originalStaffsState = JSON.parse(JSON.stringify(window.staffs));
+        // Deep copy for editing to avoid modifying the original array directly
+        currentEditingStaffs = JSON.parse(JSON.stringify(window.staffs));
         renderStaffList(currentEditingStaffs);
         staffEditModal.style.display = 'block';
     });
@@ -259,8 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 担当者追加ボタン
     addStaffButton.addEventListener('click', () => {
         const newStaffName = newStaffInput.value.trim();
-        if (newStaffName && !currentEditingStaffs.some(staff => staff.name === newStaffName)) { // 担当者名が重複しないようにチェック
-            const newNo = currentEditingStaffs.length > 0 ? Math.max(...currentEditingStaffs.map(staff => staff.no)) + 1 : 1; // 最大No. + 1
+        if (newStaffName && !currentEditingStaffs.some(staff => staff.name === newStaffName)) {
+            const newNo = currentEditingStaffs.length > 0 ? Math.max(...currentEditingStaffs.map(staff => staff.no)) + 1 : 1;
             currentEditingStaffs.push({ no: newNo, name: newStaffName });
             renderStaffList(currentEditingStaffs);
             newStaffInput.value = '';
@@ -270,17 +304,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // 担当者削除ボタン (イベント委譲)
     staffListContainer.addEventListener('click', (event) => {
         if (event.target.classList.contains('delete-task-button')) {
-            const staffNoToDelete = parseInt(event.target.dataset.no); // data-no を取得
-            currentEditingStaffs = currentEditingStaffs.filter(staff => staff.no !== staffNoToDelete); // no でフィルタリング
-            renderStaffList(currentEditingStaffs); // リレンダリング
+            const staffNoToDelete = parseInt(event.target.dataset.no);
+            currentEditingStaffs = currentEditingStaffs.filter(staff => staff.no !== staffNoToDelete);
+            renderStaffList(currentEditingStaffs);
         }
     });
 
     // 担当者名変更 (inputイベント)
     staffListContainer.addEventListener('input', (event) => {
-        if (event.target.tagName === 'INPUT') {
-            const staffNo = parseInt(event.target.dataset.no); // data-no を取得
-            const staffIndex = currentEditingStaffs.findIndex(staff => staff.no === staffNo); // no でインデックスを検索
+        if (event.target.tagName === 'INPUT' && event.target.classList.contains('task-input')) {
+            const staffNo = parseInt(event.target.dataset.no);
+            const staffIndex = currentEditingStaffs.findIndex(staff => staff.no === staffNo);
             if (staffIndex !== -1) {
                 currentEditingStaffs[staffIndex].name = event.target.value.trim();
             }
@@ -289,10 +323,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 担当者保存ボタン
     saveStaffButton.addEventListener('click', () => {
-        // 空の項目をフィルタリング
-        window.staffs = currentEditingStaffs.filter(staff => staff !== '');
-        saveData(window.clients, window.clientDetails, window.staffs); // データを保存
+        const nameChanges = new Map();
+
+        // Find name changes by comparing with the state when the modal was opened
+        currentEditingStaffs.forEach(editedStaff => {
+            const originalStaff = originalStaffsState.find(s => s.no === editedStaff.no);
+            if (originalStaff && originalStaff.name !== editedStaff.name) {
+                if (editedStaff.name.trim() !== '') {
+                    nameChanges.set(originalStaff.name, editedStaff.name);
+                }
+            }
+        });
+
+        // Update client assignments
+        if (nameChanges.size > 0) {
+            window.clients.forEach(client => {
+                if (nameChanges.has(client.担当者)) {
+                    client.担当者 = nameChanges.get(client.担当者);
+                }
+            });
+        }
+
+        // Update the global staff list with the edited list (filtering out any empty names)
+        window.staffs = currentEditingStaffs.filter(staff => staff.name.trim() !== '');
+
+        saveData(window.clients, window.clientDetails, window.staffs);
+        
+        alert('保存しました');
+        
         staffEditModal.style.display = 'none';
-        renderClients(searchInput.value); // メインページを再描画して変更を反映
+        renderClients(searchInput.value);
     });
 });

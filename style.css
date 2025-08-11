@@ -285,6 +285,13 @@ th[data-sort-key]:hover .sort-icon {
     margin-right: 10px;
 }
 
+.staff-no {
+    margin-right: 10px;
+    font-weight: bold;
+    width: 60px; /* Fixed width for alignment */
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
 .delete-task-button {
     background-color: #dc3545;
     color: white;
@@ -338,13 +345,33 @@ th[data-sort-key]:hover .sort-icon {
     margin-left: 10px;
 }
 
+
+.modal-buttons button.save-button {
+    background-color: #28a745;
+    color: white;
+}
+
+.modal-buttons button.save-button:hover {
+    background-color: #218838;
+}
+
 #save-tasks-button {
     background-color: #28a745;
     color: white;
 }
 
+
 #save-tasks-button:hover {
     background-color: #218838;
+}
+
+.modal-buttons button.cancel-button {
+    background-color: #6c757d;
+    color: white;
+}
+
+.modal-buttons button.cancel-button:hover {
+    background-color: #5a6268;
 }
 
 #cancel-tasks-button {
