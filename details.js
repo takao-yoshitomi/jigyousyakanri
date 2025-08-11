@@ -2,10 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const clientInfoArea = document.getElementById('client-info-area');
     const detailsTableHead = document.querySelector('#details-table thead');
     const detailsTableBody = document.querySelector('#details-table tbody');
-    const fiscalMonthFilter = document.getElementById('fiscal-month-filter');
+    // const fiscalMonthFilter = document.getElementById('fiscal-month-filter'); // コメントアウト
     const yearFilter = document.getElementById('year-filter'); // 新しい要素
 
-    initializeCustomDropdown(fiscalMonthFilter);
+    // initializeCustomDropdown(fiscalMonthFilter); // コメントアウト
 
     // 年度ドロップダウンのオプションを生成
     const currentYear = new Date().getFullYear();
@@ -25,13 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const clientNo = urlParams.get('no');
 
-    let currentFiscalMonth = fiscalMonthFilter.value;
+    // let currentFiscalMonth = fiscalMonthFilter.value; // コメントアウト
     let currentYearSelection = yearFilter.value;
 
     let sampleClient; // sampleClient をグローバルスコープで定義
     let monthsToDisplay = []; // monthsToDisplay をグローバルスコープで定義
 
-    function renderDetails(filterMonth) {
+    function renderDetails() { // filterMonth 引数を削除
         clientInfoArea.innerHTML = '';
         detailsTableHead.innerHTML = '';
         detailsTableBody.innerHTML = '';
@@ -42,16 +42,17 @@ document.addEventListener('DOMContentLoaded', () => {
             displayClientDetails = clientDetails.filter(client => client.no == clientNo);
         }
 
-        const filteredClients = displayClientDetails.filter(client => {
-            return filterMonth === 'all' || client.fiscalMonth.includes(filterMonth);
-        });
+        // const filteredClients = displayClientDetails.filter(client => { // コメントアウト
+        //     return filterMonth === 'all' || client.fiscalMonth.includes(filterMonth);
+        // });
 
-        if (filteredClients.length === 0) {
-            detailsTableBody.innerHTML = '<tr><td colspan="99">該当するクライアントが見つかりません。</td></tr>';
-            return;
-        }
+        // if (filteredClients.length === 0) { // コメントアウト
+        //     detailsTableBody.innerHTML = '<tr><td colspan="99">該当するクライアントが見つかりません。</td></tr>
+        //     return;
+        // }
 
-        sampleClient = filteredClients[0]; // ここで sampleClient に値を代入
+        // sampleClient = filteredClients[0]; // コメントアウト
+        sampleClient = displayClientDetails[0]; // 修正
 
         // sampleClient が undefined の場合に備える
         if (!sampleClient) {
@@ -103,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         detailsTableHead.appendChild(taskHeaderRow);
 
         // --- タスク・チェックボックステーブルのボディ生成 ---
-        const allTaskNames = sampleClient.monthlyTasks[0] ? Object.keys(sampleClient.monthlyTasks[0].tasks) : [];
+        const allTaskNames = sampleClient.customTasks || (sampleClient.monthlyTasks[0] ? Object.keys(sampleClient.monthlyTasks[0].tasks) : []);
         allTaskNames.forEach(taskName => {
             const taskRow = detailsTableBody.insertRow();
             taskRow.insertCell().textContent = taskName; // タスク名（一番左の列）
@@ -192,17 +193,102 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initial render based on URL parameter or default
-    renderDetails(currentFiscalMonth);
+    renderDetails(); // 引数を削除
 
-    // Filter change event
-    fiscalMonthFilter.addEventListener('change', (event) => {
-        currentFiscalMonth = event.target.value;
-        renderDetails(currentFiscalMonth);
-    });
+    // Filter change event // コメントアウト
+    // fiscalMonthFilter.addEventListener('change', (event) => {
+    //     currentFiscalMonth = event.target.value;
+    //     renderDetails(currentFiscalMonth);
+    // });
 
     // Year filter change event
     yearFilter.addEventListener('change', (event) => {
         currentYearSelection = event.target.value;
-        renderDetails(currentFiscalMonth);
+        renderDetails(); // 引数を削除
+    });
+
+    // モーダル関連の要素を取得
+    const editTasksButton = document.getElementById('edit-tasks-button');
+    const taskEditModal = document.getElementById('task-edit-modal');
+    const closeButton = taskEditModal.querySelector('.close-button');
+    const taskListContainer = document.getElementById('task-list-container');
+    const newTaskInput = document.getElementById('new-task-input');
+    const addTaskButton = document.getElementById('add-task-button');
+    const saveTasksButton = document.getElementById('save-tasks-button');
+    const cancelTasksButton = document.getElementById('cancel-tasks-button');
+
+    let currentEditingTasks = []; // モーダル内で編集中のタスクリスト
+
+    // タスクリストをレンダリングする関数
+    function renderTaskList(tasks) {
+        taskListContainer.innerHTML = '';
+        tasks.forEach((task, index) => {
+            const taskItem = document.createElement('div');
+            taskItem.classList.add('task-item');
+            taskItem.innerHTML = `
+                <input type="text" value="${task}">
+                <button class="delete-task-button" data-index="${index}">削除</button>
+            `;
+            taskListContainer.appendChild(taskItem);
+        });
+    }
+
+    // モーダルを開く
+    editTasksButton.addEventListener('click', () => {
+        currentEditingTasks = [...(sampleClient.customTasks || [])]; // 現在のタスクをコピー
+        renderTaskList(currentEditingTasks);
+        taskEditModal.style.display = 'block';
+    });
+
+    // モーダルを閉じる
+    closeButton.addEventListener('click', () => {
+        taskEditModal.style.display = 'none';
+    });
+
+    cancelTasksButton.addEventListener('click', () => {
+        taskEditModal.style.display = 'none';
+    });
+
+    // モーダルの外側をクリックで閉じる
+    window.addEventListener('click', (event) => {
+        if (event.target === taskEditModal) {
+            taskEditModal.style.display = 'none';
+        }
+    });
+
+    // タスク追加ボタン
+    addTaskButton.addEventListener('click', () => {
+        const newTaskName = newTaskInput.value.trim();
+        if (newTaskName && !currentEditingTasks.includes(newTaskName)) {
+            currentEditingTasks.push(newTaskName);
+            renderTaskList(currentEditingTasks);
+            newTaskInput.value = '';
+        }
+    });
+
+    // タスク削除ボタン (イベント委譲)
+    taskListContainer.addEventListener('click', (event) => {
+        if (event.target.classList.contains('delete-task-button')) {
+            const index = parseInt(event.target.dataset.index);
+            currentEditingTasks.splice(index, 1);
+            renderTaskList(currentEditingTasks); // リレンダリングしてインデックスを更新
+        }
+    });
+
+    // タスク名変更 (inputイベント)
+    taskListContainer.addEventListener('input', (event) => {
+        if (event.target.tagName === 'INPUT') {
+            const index = parseInt(event.target.closest('.task-item').querySelector('.delete-task-button').dataset.index);
+            currentEditingTasks[index] = event.target.value.trim();
+        }
+    });
+
+    // タスク保存ボタン
+    saveTasksButton.addEventListener('click', () => {
+        // 空の項目をフィルタリング
+        sampleClient.customTasks = currentEditingTasks.filter(task => task !== '');
+        saveData(clients, clientDetails); // データを保存
+        taskEditModal.style.display = 'none';
+        renderDetails(); // 詳細ページを再描画して変更を反映
     });
 });

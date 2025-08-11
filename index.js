@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clientsTableBody.innerHTML = ''; // Clear existing rows
 
     
-        const filteredClients = clients.filter(client => {
+        const filteredClients = window.clients.filter(client => {
             const nameMatch = client.name.includes(filterText);
             const 담당자Match = client.担当者.includes(filterText);
             return nameMatch || 담당자Match;
