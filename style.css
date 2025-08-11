@@ -173,8 +173,8 @@ tr:hover {
 }
 
 /* Sorted Column Style */
-th.sorted-column {
-    color: #007bff; /* 例: 青色に変更 */
+table#clients-table thead th.sorted-column {
+    color: #007bff !important; /* 例: 青色に変更 */
     font-weight: bold;
 }
 
@@ -208,24 +208,21 @@ th.sorted-column {
     vertical-align: middle;
     border-left: 4px solid transparent;
     border-right: 4px solid transparent;
-    opacity: 1; /* 常に表示 */
-    transition: none; /* トランジションを無効化 */
+    opacity: 0; /* 非表示 */
+    transition: opacity 0.2s ease; /* トランジションを追加 */
 }
 
 .sort-icon.asc {
     border-bottom: 4px solid #333; /* Up arrow */
+    opacity: 1; /* 表示 */
 }
 
 .sort-icon.desc {
     border-top: 4px solid #333; /* Down arrow */
+    opacity: 1; /* 表示 */
 }
 
 /* Only show icon when sorting or on hover */
 th[data-sort-key]:hover .sort-icon {
-    opacity: 1;
-}
-
-th[data-sort-key][data-sort-direction="asc"] .sort-icon.asc,
-th[data-sort-key][data-sort-direction="desc"] .sort-icon.desc {
     opacity: 1;
 }

@@ -27,8 +27,6 @@
 }
 
 .custom-select-trigger.active { /* Use active class for styling when open */
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
 }
 
 /* Arrow icon for custom-select-trigger */
@@ -66,7 +64,6 @@
 
 .custom-options.active { /* Changed from .open to .active */
     display: block;
-    background-color: lightblue; /* Add this for debugging */
 }
 
 .custom-option {

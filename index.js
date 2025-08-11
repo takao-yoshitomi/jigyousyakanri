@@ -26,18 +26,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add new header for 月次進捗詳細
     const newTh = document.createElement('th');
-    newTh.textContent = '月次進捗詳細';
+    newTh.textContent = '登録情報編集';
     clientsTableHeadRow.appendChild(newTh);
 
-    // すべてのヘッダーにdata-sort-keyとsort-iconを追加し、イベントリスナーを設定
+    // すべてのヘッダー要素を取得し、ソート機能を追加
     Array.from(clientsTableHeadRow.children).forEach(th => {
         const headerText = th.textContent.trim();
-        if (headerMap[headerText]) {
-            th.dataset.sortKey = headerMap[headerText];
-            th.innerHTML = `${headerText} <span class="sort-icon"></span>`;
-        } else if (headerText === 'No.') { // No.ヘッダーは特別扱い
-            th.dataset.sortKey = 'no';
-            th.innerHTML = `No. <span class="sort-icon"></span>`;
+        let sortKey = headerMap[headerText];
+
+        if (headerText === 'No.') {
+            sortKey = 'no';
+        }
+
+        if (sortKey) {
+            th.dataset.sortKey = sortKey;
+            const sortIconSpan = document.createElement('span');
+            sortIconSpan.classList.add('sort-icon');
+            th.appendChild(sortIconSpan);
         }
     });
 
@@ -127,8 +132,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = clientsTableBody.insertRow();
             // Display No.
             row.insertCell().textContent = client.no; // Add No. cell
-            // Link 事業所名 to edit.html
-            row.insertCell().innerHTML = `<a href="edit.html?no=${client.no}" class="client-name-link">${client.name}</a>`;
+            // Link 事業所名 to details.html
+            row.insertCell().innerHTML = `<a href="details.html?no=${client.no}" class="client-name-link">${client.name}</a>`;
             row.insertCell().textContent = client.fiscalMonth;
             row.insertCell().textContent = client.unattendedMonths;
             row.insertCell().textContent = client.monthlyProgress;
@@ -154,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
             statusSelect.style.display = 'none'; // Hide the original select element
             customSelectWrapper.appendChild(statusSelect); // Append original select inside the wrapper
 
-            const statuses = ['未着手', '依頼中', '2チェック待ち', '作業中', '完了'];
+            const statuses = ['未着手', '依頼中', 'チェック待ち', '作業中', '完了'];
             statuses.forEach(status => {
                 const option = document.createElement('option');
                 option.value = status;
@@ -182,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Add new cell for 月次進捗詳細
             const monthlyProgressDetailCell = row.insertCell();
-            monthlyProgressDetailCell.innerHTML = `<a href="details.html?no=${client.no}">詳細</a>`;
+            monthlyProgressDetailCell.innerHTML = `<a href="edit.html?no=${client.no}">編集</a>`;
         });
     }
 
