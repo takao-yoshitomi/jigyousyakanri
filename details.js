@@ -52,14 +52,36 @@ document.addEventListener('DOMContentLoaded', () => {
             monthData.memo = monthData.memo || '';
         });
 
-        // --- Render Client Info Table ---
-        const clientInfoTable = document.createElement('table');
-        clientInfoTable.className = 'client-info-table';
-        clientInfoTable.innerHTML = `<tbody>
-            <tr><th>No.</th><th>事業所名</th><th>決算月</th></tr>
-            <tr><td>${sampleClient.no}</td><td>${sampleClient.name}</td><td>${sampleClient.fiscalMonth}</td></tr>
-        </tbody>`;
-        clientInfoArea.appendChild(clientInfoTable);
+        // --- Render Client Info Grid ---
+        const infoGrid = document.createElement('div');
+        infoGrid.className = 'client-info-grid';
+
+        // Define items to display
+        const items = {
+            'No.': sampleClient.no,
+            '事業所名': sampleClient.name,
+            '決算月': sampleClient.fiscalMonth,
+            '担当者': sampleClient.担当者
+        };
+
+        for (const [label, value] of Object.entries(items)) {
+            const infoItem = document.createElement('div');
+            infoItem.className = 'info-item';
+
+            const infoLabel = document.createElement('span');
+            infoLabel.className = 'info-label';
+            infoLabel.textContent = label;
+
+            const infoValue = document.createElement('span');
+            infoValue.className = 'info-value';
+            infoValue.textContent = value;
+
+            infoItem.appendChild(infoLabel);
+            infoItem.appendChild(infoValue);
+            infoGrid.appendChild(infoItem);
+        }
+
+        clientInfoArea.appendChild(infoGrid);
 
         // --- Generate Month Headers ---
         const fiscalMonthNum = parseInt(sampleClient.fiscalMonth.replace('月', ''));
