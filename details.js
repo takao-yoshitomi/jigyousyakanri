@@ -2,223 +2,201 @@ document.addEventListener('DOMContentLoaded', () => {
     const clientInfoArea = document.getElementById('client-info-area');
     const detailsTableHead = document.querySelector('#details-table thead');
     const detailsTableBody = document.querySelector('#details-table tbody');
-    // const fiscalMonthFilter = document.getElementById('fiscal-month-filter'); // コメントアウト
-    const yearFilter = document.getElementById('year-filter'); // 新しい要素
+    const notesTableHead = document.querySelector('#notes-table thead');
+    const notesTableBody = document.querySelector('#notes-table tbody');
+    const yearFilter = document.getElementById('year-filter');
 
-    // initializeCustomDropdown(fiscalMonthFilter); // コメントアウト
-
-    // 年度ドロップダウンのオプションを生成
+    // Populate year dropdown
     const currentYear = new Date().getFullYear();
     for (let year = 2025; year <= 2050; year++) {
         const option = document.createElement('option');
         option.value = year;
         option.textContent = year + '年';
-        if (year === currentYear) { // 初期値として現在の年を選択
+        if (year === currentYear) { 
             option.selected = true;
         }
         yearFilter.appendChild(option);
     }
-
-    // Initialize custom dropdown for yearFilter AFTER options are populated
     initializeCustomDropdown(yearFilter);
 
     const urlParams = new URLSearchParams(window.location.search);
     const clientNo = urlParams.get('no');
-
-    // let currentFiscalMonth = fiscalMonthFilter.value; // コメントアウト
     let currentYearSelection = yearFilter.value;
+    let sampleClient;
+    let monthsToDisplay = [];
 
-    let sampleClient; // sampleClient をグローバルスコープで定義
-    let monthsToDisplay = []; // monthsToDisplay をグローバルスコープで定義
-
-    function renderDetails() { // filterMonth 引数を削除
+    function renderDetails() {
+        // Clear all previous content
         clientInfoArea.innerHTML = '';
         detailsTableHead.innerHTML = '';
         detailsTableBody.innerHTML = '';
+        notesTableHead.innerHTML = '';
+        notesTableBody.innerHTML = '';
 
-        // clientDetails を window.clientDetails から取得するように変更
-        let displayClientDetails = window.clientDetails;
+        // Find the correct client details
+        sampleClient = window.clientDetails.find(client => client.no == clientNo);
 
-        if (clientNo) {
-            displayClientDetails = window.clientDetails.filter(client => client.no == clientNo);
-        }
-
-        sampleClient = displayClientDetails[0]; // 修正
-
-        // sampleClient が undefined の場合に備える
         if (!sampleClient) {
-            detailsTableBody.innerHTML = '<tr><td colspan="99">クライアントデータが不正です。</td></tr>';
+            clientInfoArea.innerHTML = '<p>クライアントデータが見つかりません。</p>';
             return;
         }
 
-        // monthlyTasks の tasks オブジェクトを customTasks に基づいて正規化
+        // Normalize tasks and data structure
         sampleClient.monthlyTasks.forEach(monthData => {
             const newTasks = {};
             sampleClient.customTasks.forEach(taskName => {
-                // customTasks にあるタスクは保持、なければ false を設定
-                newTasks[taskName] = monthData.tasks[taskName] !== undefined ? monthData.tasks[taskName] : false;
+                newTasks[taskName] = monthData.tasks[taskName] || false;
             });
-            // customTasks にないタスクは削除
             monthData.tasks = newTasks;
+            monthData.url = monthData.url || '';
+            monthData.memo = monthData.memo || '';
         });
 
-        // --- クライアント基本情報テーブルの生成 ---
+        // --- Render Client Info Table ---
         const clientInfoTable = document.createElement('table');
         clientInfoTable.className = 'client-info-table';
-        const clientInfoTbody = document.createElement('tbody');
-        clientInfoTable.appendChild(clientInfoTbody);
-
-        const infoRow1 = clientInfoTbody.insertRow();
-        infoRow1.insertCell().textContent = 'No.';
-        infoRow1.insertCell().textContent = '事業所名';
-        infoRow1.insertCell().textContent = '決算月';
-
-        const infoRow2 = clientInfoTbody.insertRow();
-        infoRow2.insertCell().textContent = sampleClient.no;
-        infoRow2.insertCell().textContent = sampleClient.name;
-        infoRow2.insertCell().textContent = sampleClient.fiscalMonth;
-
+        clientInfoTable.innerHTML = `<tbody>
+            <tr><th>No.</th><th>事業所名</th><th>決算月</th></tr>
+            <tr><td>${sampleClient.no}</td><td>${sampleClient.name}</td><td>${sampleClient.fiscalMonth}</td></tr>
+        </tbody>`;
         clientInfoArea.appendChild(clientInfoTable);
 
-
-        // --- タスク・チェックボックステーブルのヘッダー生成 ---
-        const taskHeaderRow = document.createElement('tr');
-        const itemHeaderCell = document.createElement('th'); // th要素を作成
-        itemHeaderCell.textContent = '項目';
-        taskHeaderRow.appendChild(itemHeaderCell); // th要素を追加
-
-        // 決算月から12ヶ月前までの月を生成
+        // --- Generate Month Headers ---
         const fiscalMonthNum = parseInt(sampleClient.fiscalMonth.replace('月', ''));
-        monthsToDisplay = []; // グローバルスコープの monthsToDisplay を更新
+        monthsToDisplay = [];
         for (let i = 0; i < 12; i++) {
             let month = fiscalMonthNum - i;
-            let year = parseInt(currentYearSelection); // 選択された年度
+            let year = parseInt(currentYearSelection);
             if (month <= 0) {
                 month += 12;
-                year--; // 前の年にする
+                year--;
             }
-            monthsToDisplay.unshift(`${year}年${month}月`); // 逆順に追加して古い順にする
+            monthsToDisplay.unshift(`${year}年${month}月`);
         }
 
-        monthsToDisplay.forEach(monthStr => {
-            const monthHeader = document.createElement('th');
-            monthHeader.textContent = monthStr;
-            taskHeaderRow.appendChild(monthHeader);
-        });
+        const taskHeaderRow = document.createElement('tr');
+        taskHeaderRow.innerHTML = '<th>項目</th>' + monthsToDisplay.map(m => `<th>${m}</th>`).join('');
         detailsTableHead.appendChild(taskHeaderRow);
 
-        // --- タスク・チェックボックステーブルのボディ生成 ---
-        const allTaskNames = sampleClient.customTasks || (sampleClient.monthlyTasks[0] ? Object.keys(sampleClient.monthlyTasks[0].tasks) : []);
+        // --- Render Main Task Table Body ---
+        const allTaskNames = sampleClient.customTasks || [];
         allTaskNames.forEach(taskName => {
             const taskRow = detailsTableBody.insertRow();
-            taskRow.insertCell().textContent = taskName; // タスク名（一番左の列）
-            
+            taskRow.insertCell().textContent = taskName;
             monthsToDisplay.forEach(monthStr => {
                 const cell = taskRow.insertCell();
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.className = 'task-checkbox';
-                
-                // 該当する月のタスクデータを見つける
                 const targetMonthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
-                if (targetMonthData && targetMonthData.tasks[taskName] !== undefined) {
-                    checkbox.checked = targetMonthData.tasks[taskName];
-                } else {
-                    checkbox.checked = false; // データがない場合はチェックなし
-                }
+                checkbox.checked = targetMonthData ? (targetMonthData.tasks[taskName] || false) : false;
 
                 checkbox.addEventListener('change', () => {
-                    // 変更されたチェックボックスの月とタスク名を特定し、データを更新
-                    const changedMonth = monthStr;
-                    const changedTaskName = taskName;
-                    let targetClientMonthData = sampleClient.monthlyTasks.find(mt => mt.month === changedMonth);
-                    if (!targetClientMonthData) { // データがない場合は新しく作成
-                        targetClientMonthData = { month: changedMonth, tasks: {} };
-                        sampleClient.monthlyTasks.push(targetClientMonthData);
+                    let monthDataToUpdate = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
+                    if (!monthDataToUpdate) {
+                        monthDataToUpdate = { month: monthStr, tasks: {}, url: '', memo: '' };
+                        sampleClient.monthlyTasks.push(monthDataToUpdate);
                     }
-                    targetClientMonthData.tasks[changedTaskName] = checkbox.checked;
-                    updateMonthlyStatus(statusRow, targetClientMonthData, allTaskNames, sampleClient); // 修正
+                    monthDataToUpdate.tasks[taskName] = checkbox.checked;
+                    updateMonthlyStatus(monthDataToUpdate, allTaskNames);
                     saveData(window.clients, window.clientDetails, window.staffs);
                 });
                 cell.appendChild(checkbox);
             });
         });
 
-        // 月次ステータス行
+        // --- Render Status Row in Main Table ---
         const statusRow = detailsTableBody.insertRow();
-        statusRow.insertCell().textContent = '月次ステータス'; // 一番左の列に表示
-
+        statusRow.insertCell().textContent = '月次ステータス';
         monthsToDisplay.forEach(monthStr => {
             const statusCell = statusRow.insertCell();
             statusCell.className = 'monthly-status';
             const targetMonthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
-            if (targetMonthData) {
-                const totalTasks = Object.keys(targetMonthData.tasks).length;
-                const completedTasks = Object.values(targetMonthData.tasks).filter(Boolean).length;
-                if (totalTasks === completedTasks) {
-                    statusCell.textContent = '月次完了';
-                    statusCell.style.backgroundColor = '#ccffcc';
-                } else if (completedTasks === 0) {
-                    statusCell.textContent = '未入力';
-                    statusCell.style.backgroundColor = '#e0e0e0';
-                } else {
-                    const percentage = Math.round((completedTasks / totalTasks) * 100);
-                    statusCell.textContent = `${percentage}%`;
-                    statusCell.style.backgroundColor = '#ffff99';
+            updateStatusCell(statusCell, targetMonthData, allTaskNames);
+        });
+
+        // --- Render Notes Table ---
+        notesTableHead.appendChild(taskHeaderRow.cloneNode(true)); // Clone header
+        const urlRow = notesTableBody.insertRow();
+        urlRow.insertCell().textContent = 'URL';
+        const memoRow = notesTableBody.insertRow();
+        memoRow.insertCell().textContent = 'メモ';
+
+        monthsToDisplay.forEach(monthStr => {
+            let targetMonthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr) || { url: '', memo: '' };
+            
+            // URL Cell
+            const urlCell = urlRow.insertCell();
+            const urlInput = document.createElement('input');
+            urlInput.type = 'text';
+            urlInput.value = targetMonthData.url;
+            urlInput.placeholder = 'URLを入力';
+            urlInput.addEventListener('input', (e) => {
+                let monthDataToUpdate = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
+                if (!monthDataToUpdate) {
+                    monthDataToUpdate = { month: monthStr, tasks: {}, url: '', memo: '' };
+                    sampleClient.monthlyTasks.push(monthDataToUpdate);
                 }
-            } else {
-                statusCell.textContent = 'データなし'; // データがない月のステータス
-                statusCell.style.backgroundColor = '#f0f0f0';
-            }
+                monthDataToUpdate.url = e.target.value;
+                saveData(window.clients, window.clientDetails, window.staffs);
+            });
+            urlCell.appendChild(urlInput);
+
+            // Memo Cell
+            const memoCell = memoRow.insertCell();
+            const memoTextarea = document.createElement('textarea');
+            memoTextarea.value = targetMonthData.memo;
+            memoTextarea.placeholder = 'メモを入力';
+            memoTextarea.rows = 12; // Increase height
+            memoTextarea.addEventListener('input', (e) => {
+                let monthDataToUpdate = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
+                if (!monthDataToUpdate) {
+                    monthDataToUpdate = { month: monthStr, tasks: {}, url: '', memo: '' };
+                    sampleClient.monthlyTasks.push(monthDataToUpdate);
+                }
+                monthDataToUpdate.memo = e.target.value;
+                saveData(window.clients, window.clientDetails, window.staffs);
+            });
+            memoCell.appendChild(memoTextarea);
         });
     }
 
-    function updateMonthlyStatus(row, monthData, taskNames, clientData) {
-        const totalTasks = taskNames.length; // allTaskNames (定義されているタスクの総数)
-        let completedTasks = 0;
-
-        // allTaskNames に含まれるタスクのみをチェック
-        taskNames.forEach(taskName => {
-            if (monthData.tasks[taskName] === true) {
-                completedTasks++;
+    function updateStatusCell(cell, monthData, taskNames) {
+        if (monthData && Object.keys(monthData.tasks).length > 0) {
+            const totalTasks = taskNames.length;
+            const completedTasks = taskNames.filter(task => monthData.tasks[task]).length;
+            if (totalTasks > 0 && totalTasks === completedTasks) {
+                cell.textContent = '月次完了';
+                cell.style.backgroundColor = '#ccffcc';
+            } else if (completedTasks === 0) {
+                cell.textContent = '未入力';
+                cell.style.backgroundColor = '#e0e0e0';
+            } else {
+                const percentage = Math.round((completedTasks / totalTasks) * 100);
+                cell.textContent = `${percentage}%`;
+                cell.style.backgroundColor = '#ffff99';
             }
-        });
-        
-        // 該当する月次ステータスセルを見つける
-        const statusRow = detailsTableBody.querySelector('tr:last-child'); // 月次ステータス行は常に最後
-        const monthIndex = monthsToDisplay.findIndex(m => m === monthData.month);
-        const targetStatusCell = statusRow.cells[monthIndex + 1]; // 最初のセルが「月次ステータス」なので+1
-
-
-        if (completedTasks === totalTasks) {
-            targetStatusCell.textContent = '月次完了';
-            targetStatusCell.style.backgroundColor = '#ccffcc';
-        } else if (completedTasks === 0) {
-            targetStatusCell.textContent = '未入力';
-            targetStatusCell.style.backgroundColor = '#e0e0e0';
         } else {
-            const percentage = Math.round((completedTasks / totalTasks) * 100);
-            targetStatusCell.textContent = `${percentage}%`;
-            targetStatusCell.style.backgroundColor = '#ffff99';
+            cell.textContent = 'データなし';
+            cell.style.backgroundColor = '#f0f0f0';
         }
     }
 
-    // Initial render based on URL parameter or default
-    renderDetails(); // 引数を削除
+    function updateMonthlyStatus(monthData, taskNames) {
+        const monthIndex = monthsToDisplay.findIndex(m => m === monthData.month);
+        if (monthIndex === -1) return;
 
-    // Filter change event // コメントアウト
-    // fiscalMonthFilter.addEventListener('change', (event) => {
-    //     currentFiscalMonth = event.target.value;
-    //     renderDetails(currentFiscalMonth);
-    // });
+        const statusRow = detailsTableBody.querySelector('tr:last-child');
+        const statusCell = statusRow.cells[monthIndex + 1];
+        updateStatusCell(statusCell, monthData, taskNames);
+    }
 
-    // Year filter change event
     yearFilter.addEventListener('change', (event) => {
         currentYearSelection = event.target.value;
-        renderDetails(); // 引数を削除
+        renderDetails();
     });
 
-    // モーダル関連の要素を取得
+    // --- Modal Logic (remains the same) ---
     const editTasksButton = document.getElementById('edit-tasks-button');
     const taskEditModal = document.getElementById('task-edit-modal');
     const closeButton = taskEditModal.querySelector('.close-button');
@@ -227,10 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const addTaskButton = document.getElementById('add-task-button');
     const saveTasksButton = document.getElementById('save-tasks-button');
     const cancelTasksButton = document.getElementById('cancel-tasks-button');
+    let currentEditingTasks = [];
 
-    let currentEditingTasks = []; // モーダル内で編集中のタスクリスト
-
-    // タスクリストをレンダリングする関数
     function renderTaskList(tasks) {
         taskListContainer.innerHTML = '';
         tasks.forEach((task, index) => {
@@ -244,30 +220,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // モーダルを開く
     editTasksButton.addEventListener('click', () => {
-        currentEditingTasks = [...(sampleClient.customTasks || [])]; // 現在のタスクをコピー
+        currentEditingTasks = [...(sampleClient.customTasks || [])];
         renderTaskList(currentEditingTasks);
         taskEditModal.style.display = 'block';
     });
 
-    // モーダルを閉じる
-    closeButton.addEventListener('click', () => {
-        taskEditModal.style.display = 'none';
-    });
+    closeButton.addEventListener('click', () => { taskEditModal.style.display = 'none'; });
+    cancelTasksButton.addEventListener('click', () => { taskEditModal.style.display = 'none'; });
+    window.addEventListener('click', (event) => { if (event.target === taskEditModal) { taskEditModal.style.display = 'none'; } });
 
-    cancelTasksButton.addEventListener('click', () => {
-        taskEditModal.style.display = 'none';
-    });
-
-    // モーダルの外側をクリックで閉じる
-    window.addEventListener('click', (event) => {
-        if (event.target === taskEditModal) {
-            taskEditModal.style.display = 'none';
-        }
-    });
-
-    // タスク追加ボタン
     addTaskButton.addEventListener('click', () => {
         const newTaskName = newTaskInput.value.trim();
         if (newTaskName && !currentEditingTasks.includes(newTaskName)) {
@@ -277,29 +239,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // タスク削除ボタン (イベント委譲)
     taskListContainer.addEventListener('click', (event) => {
         if (event.target.classList.contains('delete-task-button')) {
             const index = parseInt(event.target.dataset.index);
             currentEditingTasks.splice(index, 1);
-            renderTaskList(currentEditingTasks); // リレンダリングしてインデックスを更新
+            renderTaskList(currentEditingTasks);
         }
     });
 
-    // タスク名変更 (inputイベント)
     taskListContainer.addEventListener('input', (event) => {
         if (event.target.tagName === 'INPUT') {
-            const index = parseInt(event.target.closest('.task-item').querySelector('.delete-task-button').dataset.index);
+            const index = Array.from(taskListContainer.children).indexOf(event.target.closest('.task-item'));
             currentEditingTasks[index] = event.target.value.trim();
         }
     });
 
-    // タスク保存ボタン
     saveTasksButton.addEventListener('click', () => {
-        // 空の項目をフィルタリング
         sampleClient.customTasks = currentEditingTasks.filter(task => task !== '');
-        saveData(window.clients, window.clientDetails, window.staffs); // データを保存
+        saveData(window.clients, window.clientDetails, window.staffs);
         taskEditModal.style.display = 'none';
-        renderDetails(); // 詳細ページを再描画して変更を反映
+        renderDetails();
     });
+
+    // Initial Render
+    renderDetails();
 });

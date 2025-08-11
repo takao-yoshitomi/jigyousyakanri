@@ -117,6 +117,20 @@ tr:hover {
 
 .details-table {
     min-width: 1200px; /* Ensure table is wide enough to scroll */
+    table-layout: fixed; /* Add this for consistent column widths */
+}
+
+#notes-table input[type="text"],
+#notes-table textarea {
+    width: 100%;
+    box-sizing: border-box; /* Ensures padding and border are included in the width */
+    border: 1px solid #ddd; /* A light border to define the fields */
+    padding: 4px;
+    background-color: transparent; /* Make background transparent */
+}
+
+#notes-table textarea {
+    resize: vertical; /* Allow vertical resize only */
 }
 
 .details-table th,
@@ -427,4 +441,9 @@ th[data-sort-key]:hover .sort-icon {
     padding-top: 12px;
     padding-bottom: 12px;
     font-size: 1.1rem; /* Slightly larger font */
+}
+
+/* Make the Add Staff button larger */
+#add-staff-button {
+    padding: 12px 20px;
 }
