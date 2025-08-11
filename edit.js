@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Get elements from the DOM
+    // --- DOM Element Selectors ---
+    const pageTitle = document.querySelector('h1');
     const clientNameDisplay = document.getElementById('client-name-display');
     const clientNoInput = document.getElementById('client-no');
     const clientNameInput = document.getElementById('client-name');
@@ -8,122 +9,159 @@ document.addEventListener('DOMContentLoaded', () => {
     const accountingMethodSelect = document.getElementById('accounting-method');
     const saveButton = document.getElementById('save-button');
 
-    // Get client number from URL
+    // --- Mode Determination ---
     const urlParams = new URLSearchParams(window.location.search);
-    const clientNo = parseInt(urlParams.get('no'));
+    const clientNo = urlParams.get('no') ? parseInt(urlParams.get('no')) : null;
+    const isNewMode = clientNo === null;
 
     let currentClient = null;
 
-    // Find the client in the global array
-    if (clientNo) {
-        currentClient = window.clients.find(client => client.no === clientNo);
+    // --- Initialization ---
+    if (isNewMode) {
+        initializeNewMode();
+    } else {
+        initializeEditMode();
     }
 
-    if (currentClient) {
-        // --- Populate form with existing data ---
-        clientNameDisplay.textContent = currentClient.name;
-        clientNoInput.value = currentClient.no;
-        clientNameInput.value = currentClient.name;
-        fiscalMonthSelect.value = currentClient.fiscalMonth;
-        accountingMethodSelect.value = currentClient.accountingMethod;
+    // --- Mode Initializers ---
+    function initializeNewMode() {
+        pageTitle.textContent = '顧客新規登録';
+        pageTitle.style.color = 'red'; // Set title color to red
+        clientNameDisplay.style.display = 'none'; // Hide the static name display
 
-        // Populate staff dropdown
+        // Suggest the next available client number
+        const maxNo = window.clients.length > 0 ? Math.max(...window.clients.map(c => c.no)) : 100;
+        clientNoInput.value = maxNo + 1;
+
+        populateDropdowns();
+        initializeAllCustomDropdowns();
+    }
+
+    function initializeEditMode() {
+        currentClient = window.clients.find(client => client.no === clientNo);
+        if (currentClient) {
+            pageTitle.textContent = '顧客情報編集';
+            clientNameDisplay.textContent = currentClient.name;
+            clientNoInput.value = currentClient.no;
+            clientNameInput.value = currentClient.name;
+            fiscalMonthSelect.value = currentClient.fiscalMonth;
+            accountingMethodSelect.value = currentClient.accountingMethod;
+            populateDropdowns(currentClient.担当者);
+            initializeAllCustomDropdowns();
+        } else {
+            pageTitle.textContent = 'エラー';
+            document.getElementById('edit-form').innerHTML = '<p>指定されたクライアントが見つかりません。</p>';
+        }
+    }
+
+    // --- Helper Functions ---
+    function populateDropdowns(selectedStaff = '') {
+        // Staff Dropdown
+        staffSelect.innerHTML = '<option value="">選択してください</option>'; // Add a placeholder
         window.staffs.forEach(staff => {
             const option = document.createElement('option');
             option.value = staff.name;
-            option.textContent = `${staff.name}`; // You can add No. here if you like, e.g., `${staff.no}: ${staff.name}`
-            if (currentClient.担当者 === staff.name) {
+            option.textContent = staff.name;
+            if (selectedStaff === staff.name) {
                 option.selected = true;
             }
             staffSelect.appendChild(option);
         });
+    }
 
-        // --- Initialize custom dropdowns and update their triggers ---
+    function initializeAllCustomDropdowns() {
         document.querySelectorAll('.custom-select-wrapper').forEach(wrapper => {
             const select = wrapper.querySelector('.custom-select-target');
             if (select) {
                 initializeCustomDropdown(select);
-                // Manually update trigger text after populating
                 const trigger = wrapper.querySelector('.custom-select-trigger');
-                if (select.options.length > 0) {
+                if (select.value) {
                     trigger.textContent = select.options[select.selectedIndex].textContent;
+                } else {
+                    // Set placeholder text if no value is selected
+                    trigger.textContent = select.options[0].textContent;
                 }
             }
         });
-
-    } else {
-        // Handle case where client is not found
-        clientNameDisplay.textContent = 'クライアントが見つかりません。';
-        saveButton.disabled = true;
-        // Hide the form if no client
-        document.getElementById('edit-form').style.display = 'none';
     }
 
-    // --- Add Event Listeners ---
-
-    // Enforce numeric input for the "No." field
+    // --- Event Listeners ---
     clientNoInput.addEventListener('input', () => {
         clientNoInput.value = clientNoInput.value.replace(/[^0-9]/g, '');
     });
 
-    // Save button click handler
-    saveButton.addEventListener('click', () => {
-        if (currentClient) {
-            // --- Data Validation ---
-            const newNo = parseInt(clientNoInput.value);
-            const newName = clientNameInput.value.trim();
-            const newStaff = staffSelect.value;
+    saveButton.addEventListener('click', saveDataHandler);
 
-            if (!newName) {
-                alert('事業所名は必須です。');
-                return;
-            }
-            if (isNaN(newNo) || newNo <= 0) {
-                alert('No.は正の整数で入力してください。');
-                return;
-            }
+    // --- Save Logic ---
+    function saveDataHandler() {
+        // --- Validation ---
+        const newNo = parseInt(clientNoInput.value);
+        const newName = clientNameInput.value.trim();
+        const newStaff = staffSelect.value;
+        const newFiscalMonth = fiscalMonthSelect.value;
+        const newAccountingMethod = accountingMethodSelect.value;
 
-            // Check if the new No. is already taken by another client
-            if (window.clients.some(c => c.no === newNo && c.no !== currentClient.no)) {
-                alert('そのNo.は既に使用されています。別のNo.を入力してください。');
-                return;
-            }
+        if (!newName || !newStaff || !newFiscalMonth || !newAccountingMethod) {
+            alert('すべての項目を入力または選択してください。');
+            return;
+        }
+        if (isNaN(newNo) || newNo <= 0) {
+            alert('No.は正の整数で入力してください。');
+            return;
+        }
 
-            // --- Update Data ---
+        // Check for unique No.
+        const isNoTaken = window.clients.some(c => c.no === newNo && (isNewMode || c.no !== currentClient.no));
+        if (isNoTaken) {
+            alert('そのNo.は既に使用されています。別のNo.を入力してください。');
+            return;
+        }
 
-            // Find the corresponding details object
+        if (isNewMode) {
+            // --- Create New Client ---
+            const newClient = {
+                no: newNo,
+                name: newName,
+                fiscalMonth: newFiscalMonth,
+                unattendedMonths: 'N/A', // Default value
+                monthlyProgress: 'N/A', // Default value
+                担当者: newStaff,
+                accountingMethod: newAccountingMethod,
+                status: '未着手' // Default status
+            };
+
+            const newClientDetail = {
+                no: newNo,
+                name: newName,
+                fiscalMonth: newFiscalMonth,
+                担当者: newStaff,
+                customTasks: ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"], // Default tasks
+                monthlyTasks: [] // Initially empty
+            };
+
+            window.clients.push(newClient);
+            window.clientDetails.push(newClientDetail);
+
+        } else {
+            // --- Update Existing Client ---
             const clientDetail = window.clientDetails.find(detail => detail.no === currentClient.no);
-
-            // Update clientDetails if No. has changed
             if (clientDetail) {
                 clientDetail.no = newNo;
                 clientDetail.name = newName;
                 clientDetail.担当者 = newStaff;
+                clientDetail.fiscalMonth = newFiscalMonth;
             }
 
-            // Update the main client object
             currentClient.no = newNo;
             currentClient.name = newName;
             currentClient.担当者 = newStaff;
-            currentClient.fiscalMonth = fiscalMonthSelect.value;
-            currentClient.accountingMethod = accountingMethodSelect.value;
-
-            // Save all data
-            saveData(window.clients, window.clientDetails, window.staffs);
-            
-            alert('変更を保存しました！');
-            
-            // Redirect to the details page, using the new 'no' in case it was changed
-            window.location.href = `details.html?no=${newNo}`;
+            currentClient.fiscalMonth = newFiscalMonth;
+            currentClient.accountingMethod = newAccountingMethod;
         }
-    });
-});
 
-// This part should already be in your custom-dropdown.js, but ensure it's loaded.
-// If not, you might need to re-initialize after dynamic population.
-document.querySelectorAll('.custom-select-wrapper').forEach(wrapper => {
-    const select = wrapper.querySelector('.custom-select-target');
-    if (select) {
-        initializeCustomDropdown(select);
+        // --- Save and Redirect ---
+        saveData(window.clients, window.clientDetails, window.staffs);
+        alert('保存しました！');
+        window.location.href = `details.html?no=${newNo}`;
     }
 });

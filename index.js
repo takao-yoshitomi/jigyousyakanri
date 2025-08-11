@@ -97,6 +97,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Staff Modal listeners
         document.getElementById('manage-staff-button').addEventListener('click', openStaffModal);
+        document.getElementById('add-client-button').addEventListener('click', () => {
+            window.location.href = 'edit.html';
+        });
         closeStaffModalButton.addEventListener('click', () => staffEditModal.style.display = 'none');
         cancelStaffButton.addEventListener('click', () => staffEditModal.style.display = 'none');
         window.addEventListener('click', (event) => {
