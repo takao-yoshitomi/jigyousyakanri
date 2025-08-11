@@ -1,7 +1,28 @@
 document.addEventListener('DOMContentLoaded', () => {
     const clientsTableBody = document.querySelector('#clients-table tbody');
+    if (!clientsTableBody) {
+        console.error("Error: #clients-table tbody not found in the DOM.");
+        return; // 要素が見つからない場合は処理を中断
+    }
     const searchInput = document.getElementById('search-input');
     const clientsTableHeadRow = document.querySelector('#clients-table thead tr');
+    if (!clientsTableHeadRow) {
+        console.error("Error: #clients-table thead tr not found in the DOM.");
+        return; // 要素が見つからない場合は処理を中断
+    }
+
+    // モーダル関連の要素をDOMContentLoadedの先頭で取得
+    const staffEditModal = document.getElementById('staff-edit-modal');
+    if (!staffEditModal) {
+        console.error("Error: #staff-edit-modal not found in the DOM.");
+        return; // 要素が見つからない場合は処理を中断
+    }
+    const closeStaffModalButton = staffEditModal.querySelector('.close-button'); // ここで定義
+    const staffListContainer = document.getElementById('staff-list-container');
+    const newStaffInput = document.getElementById('new-staff-input');
+    const addStaffButton = document.getElementById('add-staff-button');
+    const saveStaffButton = document.getElementById('save-staff-button');
+    const cancelStaffButton = document.getElementById('cancel-staff-button');
 
     let currentSortKey = 'fiscalMonth'; // 初期ソートキー
     let currentSortDirection = 'asc'; // 初期ソート方向
@@ -137,7 +158,9 @@ document.addEventListener('DOMContentLoaded', () => {
             row.insertCell().textContent = client.fiscalMonth;
             row.insertCell().textContent = client.unattendedMonths;
             row.insertCell().textContent = client.monthlyProgress;
-            row.insertCell().textContent = client.担当者;
+            // 担当者No.から担当者名を取得して表示
+            const staffName = window.staffs.find(staff => staff.name === client.担当者)?.name || client.担当者;
+            row.insertCell().textContent = staffName;
             row.insertCell().textContent = client.accountingMethod;
 
             const statusCell = row.insertCell();
@@ -211,34 +234,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminMenuSelect = document.getElementById('admin-menu-select');
     initializeCustomDropdown(adminMenuSelect);
 
-    // 担当者編集モーダル関連の要素を取得
-    const staffEditModal = document.getElementById('staff-edit-modal');
-    const closeStaffModalButton = staffEditModal.querySelector('.close-button');
-    const staffListContainer = document.getElementById('staff-list-container');
-    const newStaffInput = document.getElementById('new-staff-input');
-    const addStaffButton = document.getElementById('add-staff-button');
-    const saveStaffButton = document.getElementById('save-staff-button');
-    const cancelStaffButton = document.getElementById('cancel-staff-button');
-
-    let currentEditingStaffs = []; // モーダル内で編集中の担当者リスト
-
-    // 担当者リストをレンダリングする関数
-    function renderStaffList(staffs) {
-        staffListContainer.innerHTML = '';
-        staffs.forEach((staff, index) => {
-            const staffItem = document.createElement('div');
-            staffItem.classList.add('task-item'); // task-itemクラスを再利用
-            staffItem.innerHTML = `
-                <input type="text" value="${staff}">
-                <button class="delete-task-button" data-index="${index}">削除</button>
-            `;
-            staffListContainer.appendChild(staffItem);
-        });
-    }
-
-    // 管理者メニューの選択イベント
-    adminMenuSelect.addEventListener('change', (event) => {
-        if (event.target.value === 'manage-staff') {
+    // 管理者メニューの選択イベント (変更)
+    const adminCustomOptions = adminMenuSelect.closest('.custom-select-wrapper').querySelector('.custom-options');
+    adminCustomOptions.addEventListener('click', (event) => {
+        event.stopPropagation(); // イベントの伝播を停止
+        const selectedOption = event.target.closest('.custom-option');
+        if (selectedOption && selectedOption.dataset.value === 'manage-staff') {
             currentEditingStaffs = [...window.staffs]; // 現在の担当者をコピー
             renderStaffList(currentEditingStaffs);
             staffEditModal.style.display = 'block';
@@ -264,8 +265,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 担当者追加ボタン
     addStaffButton.addEventListener('click', () => {
         const newStaffName = newStaffInput.value.trim();
-        if (newStaffName && !currentEditingStaffs.includes(newStaffName)) {
-            currentEditingStaffs.push(newStaffName);
+        if (newStaffName && !currentEditingStaffs.some(staff => staff.name === newStaffName)) { // 担当者名が重複しないようにチェック
+            const newNo = currentEditingStaffs.length > 0 ? Math.max(...currentEditingStaffs.map(staff => staff.no)) + 1 : 1; // 最大No. + 1
+            currentEditingStaffs.push({ no: newNo, name: newStaffName });
             renderStaffList(currentEditingStaffs);
             newStaffInput.value = '';
         }
@@ -274,17 +276,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // 担当者削除ボタン (イベント委譲)
     staffListContainer.addEventListener('click', (event) => {
         if (event.target.classList.contains('delete-task-button')) {
-            const index = parseInt(event.target.dataset.index);
-            currentEditingStaffs.splice(index, 1);
-            renderStaffList(currentEditingStaffs); // リレンダリングしてインデックスを更新
+            const staffNoToDelete = parseInt(event.target.dataset.no); // data-no を取得
+            currentEditingStaffs = currentEditingStaffs.filter(staff => staff.no !== staffNoToDelete); // no でフィルタリング
+            renderStaffList(currentEditingStaffs); // リレンダリング
         }
     });
 
     // 担当者名変更 (inputイベント)
     staffListContainer.addEventListener('input', (event) => {
         if (event.target.tagName === 'INPUT') {
-            const index = parseInt(event.target.closest('.task-item').querySelector('.delete-task-button').dataset.index);
-            currentEditingStaffs[index] = event.target.value.trim();
+            const staffNo = parseInt(event.target.dataset.no); // data-no を取得
+            const staffIndex = currentEditingStaffs.findIndex(staff => staff.no === staffNo); // no でインデックスを検索
+            if (staffIndex !== -1) {
+                currentEditingStaffs[staffIndex].name = event.target.value.trim();
+            }
         }
     });
 

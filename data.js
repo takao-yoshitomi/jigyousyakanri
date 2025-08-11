@@ -16,7 +16,8 @@ function loadData() {
 
     // 担当者リストをinitialClientsから自動生成
     const uniqueStaffs = [...new Set(initialClients.map(client => client.担当者))];
-    let initialStaffs = uniqueStaffs.sort(); // ソートして初期担当者リストを作成
+    // uniqueStaffs をオブジェクトの配列に変換し、no を付与
+    let initialStaffs = uniqueStaffs.sort().map((name, index) => ({ no: index + 1, name: name }));
 
     let initialClientDetails = [
         {
