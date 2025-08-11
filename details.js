@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentYearSelection = yearFilter.value;
     let sampleClient;
     let monthsToDisplay = [];
+    let allTaskNames = []; // Declare globally within DOMContentLoaded scope
 
     function renderDetails() {
         // Clear all previous content
@@ -52,36 +53,14 @@ document.addEventListener('DOMContentLoaded', () => {
             monthData.memo = monthData.memo || '';
         });
 
-        // --- Render Client Info Grid ---
-        const infoGrid = document.createElement('div');
-        infoGrid.className = 'client-info-grid';
-
-        // Define items to display
-        const items = {
-            'No.': sampleClient.no,
-            '事業所名': sampleClient.name,
-            '決算月': sampleClient.fiscalMonth,
-            '担当者': sampleClient.担当者
-        };
-
-        for (const [label, value] of Object.entries(items)) {
-            const infoItem = document.createElement('div');
-            infoItem.className = 'info-item';
-
-            const infoLabel = document.createElement('span');
-            infoLabel.className = 'info-label';
-            infoLabel.textContent = label;
-
-            const infoValue = document.createElement('span');
-            infoValue.className = 'info-value';
-            infoValue.textContent = value;
-
-            infoItem.appendChild(infoLabel);
-            infoItem.appendChild(infoValue);
-            infoGrid.appendChild(infoItem);
-        }
-
-        clientInfoArea.appendChild(infoGrid);
+        // --- Render Client Info Table ---
+        const clientInfoTable = document.createElement('table');
+        clientInfoTable.className = 'client-info-table';
+        clientInfoTable.innerHTML = `<tbody>
+            <tr><th>No.</th><th>事業所名</th><th>決算月</th></tr>
+            <tr><td>${sampleClient.no}</td><td>${sampleClient.name}</td><td>${sampleClient.fiscalMonth}</td></tr>
+        </tbody>`;
+        clientInfoArea.appendChild(clientInfoTable);
 
         // --- Generate Month Headers ---
         const fiscalMonthNum = parseInt(sampleClient.fiscalMonth.replace('月', ''));
@@ -97,11 +76,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const taskHeaderRow = document.createElement('tr');
-        taskHeaderRow.innerHTML = '<th>項目</th>' + monthsToDisplay.map(m => `<th>${m}</th>`).join('');
+        const itemHeaderCell = document.createElement('th');
+        itemHeaderCell.textContent = '項目';
+        taskHeaderRow.appendChild(itemHeaderCell);
+
+        monthsToDisplay.forEach((monthStr, index) => {
+            const monthHeader = document.createElement('th');
+            monthHeader.textContent = monthStr;
+            monthHeader.classList.add('month-header'); // Add a class for styling and targeting
+            monthHeader.dataset.monthIndex = index; // Store index for easy lookup
+            monthHeader.addEventListener('click', onMonthHeaderClick); // Add click listener
+            taskHeaderRow.appendChild(monthHeader);
+        });
         detailsTableHead.appendChild(taskHeaderRow);
 
         // --- Render Main Task Table Body ---
-        const allTaskNames = sampleClient.customTasks || [];
+        allTaskNames = sampleClient.customTasks || (sampleClient.monthlyTasks[0] ? Object.keys(sampleClient.monthlyTasks[0].tasks) : []);
         allTaskNames.forEach(taskName => {
             const taskRow = detailsTableBody.insertRow();
             taskRow.insertCell().textContent = taskName;
@@ -211,6 +201,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusRow = detailsTableBody.querySelector('tr:last-child');
         const statusCell = statusRow.cells[monthIndex + 1];
         updateStatusCell(statusCell, monthData, taskNames);
+    }
+
+    function onMonthHeaderClick(event) {
+        const headerCell = event.currentTarget;
+        const monthIndex = parseInt(headerCell.dataset.monthIndex); // Get the stored index
+        const monthStr = monthsToDisplay[monthIndex]; // Get the month string
+
+        // Find all checkboxes in this column
+        // The column index in the DOM is monthIndex + 1 because the first column is "項目"
+        const checkboxesInColumn = Array.from(detailsTableBody.querySelectorAll(`tr td:nth-child(${monthIndex + 2}) input[type="checkbox"]`)); // +2 because of "項目" and 0-based index
+
+        // Determine target state: if ANY are unchecked, we check all. Otherwise, uncheck all.
+        const shouldCheckAll = checkboxesInColumn.some(cb => !cb.checked);
+
+        // Get the data object for the month
+        let monthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
+        if (!monthData) {
+            // If the user clicks a header for a month with no data, create it.
+            monthData = { month: monthStr, tasks: {}, url: '', memo: '' };
+            sampleClient.monthlyTasks.push(monthData);
+        }
+
+        // Apply the new state to checkboxes and data model
+        checkboxesInColumn.forEach((checkbox, rowIndex) => {
+            checkbox.checked = shouldCheckAll;
+            const taskName = allTaskNames[rowIndex]; // allTaskNames is defined in renderDetails
+            monthData.tasks[taskName] = shouldCheckAll;
+        });
+
+        // Update the status display for that month
+        updateMonthlyStatus(monthData, allTaskNames); // allTaskNames is defined in renderDetails
+
+        // Save all changes
+        saveData(window.clients, window.clientDetails, window.staffs);
     }
 
     yearFilter.addEventListener('change', (event) => {

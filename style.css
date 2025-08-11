@@ -138,6 +138,10 @@ tr:hover {
     resize: vertical; /* Allow vertical resize only */
 }
 
+.details-table th.month-header {
+    cursor: pointer;
+}
+
 .details-table th,
 .details-table td {
     white-space: nowrap; /* Prevent text wrapping in cells */
