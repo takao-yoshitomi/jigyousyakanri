@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>顧客進捗管理 - メイン画面</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="custom-dropdown.css"> <!-- Add custom dropdown CSS -->
+</head>
+<body>
+    <div class="container">
+        <h1>顧客進捗管理 - メイン画面</h1>
+
+        <div class="controls">
+            <input type="text" id="search-input" placeholder="事業所名または担当者名で検索">
+        </div>
+
+        <table id="clients-table">
+            <thead>
+                <tr>
+                    <th>事業所名</th>
+                    <th>決算月</th>
+                    <th>未入力月間</th>
+                    <th>月次進捗</th>
+                    <th>担当者</th>
+                    <th>経理方式</th>
+                    <th>進捗ステータス</th>
+                    <th>月次進捗詳細</th> <!-- Added header -->
+                </tr>
+            </thead>
+            <tbody>
+                <!-- クライアントデータがここに動的に挿入されます -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="custom-dropdown.js"></script> <!-- Add custom dropdown JS -->
+    <script src="index.js"></script>
+</body>
+</html>
