@@ -230,20 +230,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderClients(event.target.value);
     });
 
-    // 管理者編集ドロップダウンの初期化
-    const adminMenuSelect = document.getElementById('admin-menu-select');
-    initializeCustomDropdown(adminMenuSelect);
+    // 担当者管理ボタンの要素を取得
+    const manageStaffButton = document.getElementById('manage-staff-button');
 
-    // 管理者メニューの選択イベント (変更)
-    const adminCustomOptions = adminMenuSelect.closest('.custom-select-wrapper').querySelector('.custom-options');
-    adminCustomOptions.addEventListener('click', (event) => {
-        event.stopPropagation(); // イベントの伝播を停止
-        const selectedOption = event.target.closest('.custom-option');
-        if (selectedOption && selectedOption.dataset.value === 'manage-staff') {
-            currentEditingStaffs = [...window.staffs]; // 現在の担当者をコピー
-            renderStaffList(currentEditingStaffs);
-            staffEditModal.style.display = 'block';
-        }
+    // 担当者管理ボタンのクリックイベント
+    manageStaffButton.addEventListener('click', () => {
+        currentEditingStaffs = [...window.staffs]; // 現在の担当者をコピー
+        renderStaffList(currentEditingStaffs);
+        staffEditModal.style.display = 'block';
     });
 
     // モーダルを閉じる

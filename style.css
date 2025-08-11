@@ -364,8 +364,19 @@ th[data-sort-key]:hover .sort-icon {
     z-index: 50;
 }
 
-.admin-controls .custom-select-wrapper {
-    min-width: 180px;
+.admin-controls button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    background-color: #007bff; /* 例: 青色 */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.admin-controls button:hover {
+    background-color: #0056b3;
 }
 
 #edit-tasks-button {
