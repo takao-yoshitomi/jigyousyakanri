@@ -20,8 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
         accountingMethodSelect.value = currentClient.accountingMethod;
 
         // Initialize custom dropdowns
-        initializeCustomDropdown(fiscalMonthSelect);
-        initializeCustomDropdown(accountingMethodSelect);
+        
 
     } else {
         // Handle case where client is not found or no is missing

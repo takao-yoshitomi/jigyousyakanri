@@ -3,9 +3,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
     const clientsTableHeadRow = document.querySelector('#clients-table thead tr');
 
+    let currentSortKey = 'fiscalMonth'; // 初期ソートキー
+    let currentSortDirection = 'asc'; // 初期ソート方向
+
+    // ヘッダーのテキストと対応するソートキーのマップ
+    const headerMap = {
+        'No.': 'no',
+        '事業所名': 'name',
+        '決算月': 'fiscalMonth',
+        '未入力月間': 'unattendedMonths',
+        '月次進捗': 'monthlyProgress',
+        '担当者': '担当者',
+        '経理方式': 'accountingMethod',
+        '進捗ステータス': 'status'
+        // '月次進捗詳細' はソート対象外
+    };
+
+    // 既存のヘッダーにdata-sort-keyとsort-iconを追加
+    Array.from(clientsTableHeadRow.children).forEach(th => {
+        const headerText = th.textContent.trim();
+        if (headerMap[headerText]) {
+            th.dataset.sortKey = headerMap[headerText];
+            th.innerHTML = `${headerText} <span class="sort-icon"></span>`;
+        }
+    });
+
     // Add new header for No.
     const noTh = document.createElement('th');
     noTh.textContent = 'No.';
+    noTh.dataset.sortKey = 'no'; // No.にもソートキーを追加
+    noTh.innerHTML = `No. <span class="sort-icon"></span>`;
     clientsTableHeadRow.insertBefore(noTh, clientsTableHeadRow.firstChild); // Add No. at the beginning
 
     // Add new header for 月次進捗詳細
@@ -13,12 +40,82 @@ document.addEventListener('DOMContentLoaded', () => {
     newTh.textContent = '月次進捗詳細';
     clientsTableHeadRow.appendChild(newTh);
 
+    // ヘッダーにクリックイベントリスナーを設定
+    clientsTableHeadRow.addEventListener('click', (event) => {
+        const targetTh = event.target.closest('th');
+        if (targetTh && targetTh.dataset.sortKey) {
+            const sortKey = targetTh.dataset.sortKey;
+
+            if (currentSortKey === sortKey) {
+                // 同じ列がクリックされたらソート方向を反転
+                currentSortDirection = (currentSortDirection === 'asc') ? 'desc' : 'asc';
+            } else {
+                // 異なる列がクリックされたら新しいソートキーを設定し、昇順にリセット
+                currentSortKey = sortKey;
+                currentSortDirection = 'asc';
+            }
+            renderClients(searchInput.value); // ソートを適用して再描画
+        }
+    });
+
+    // 月を数値に変換するヘルパー関数
+    function monthToNumber(monthStr) {
+        const months = {
+            '1月': 1, '2月': 2, '3月': 3, '4月': 4, '5月': 5, '6月': 6,
+            '7月': 7, '8月': 8, '9月': 9, '10月': 10, '11月': 11, '12月': 12
+        };
+        return months[monthStr];
+    }
+
+    // ソートアイコンを更新する関数
+    function updateSortIcons() {
+        Array.from(clientsTableHeadRow.children).forEach(th => {
+            const sortIcon = th.querySelector('.sort-icon');
+            if (sortIcon) {
+                sortIcon.classList.remove('asc', 'desc');
+                if (th.dataset.sortKey === currentSortKey) {
+                    sortIcon.classList.add(currentSortDirection);
+                }
+            }
+        });
+    }
+
     function renderClients(filterText = '') {
-        clientsTableBody.innerHTML = ''; // Clear existing rows
+
+    
         const filteredClients = clients.filter(client => {
             const nameMatch = client.name.includes(filterText);
             const 담당자Match = client.担当者.includes(filterText);
             return nameMatch || 담당자Match;
+        });
+
+        // ソートロジック
+        filteredClients.sort((a, b) => {
+            let valA, valB;
+
+            switch (currentSortKey) {
+                case 'no':
+                case 'unattendedMonths':
+                case 'monthlyProgress': // %表記を数値としてソートする場合
+                    valA = parseFloat(a[currentSortKey]);
+                    valB = parseFloat(b[currentSortKey]);
+                    break;
+                case 'fiscalMonth':
+                    valA = monthToNumber(a[currentSortKey]);
+                    valB = monthToNumber(b[currentSortKey]);
+                    break;
+                default:
+                    valA = a[currentSortKey];
+                    valB = b[currentSortKey];
+            }
+
+            if (valA < valB) {
+                return currentSortDirection === 'asc' ? -1 : 1;
+            } else if (valA > valB) {
+                return currentSortDirection === 'asc' ? 1 : -1;
+            } else {
+                return 0;
+            }
         });
 
         filteredClients.forEach(client => {
@@ -93,6 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial render
     renderClients();
+    updateSortIcons(); // 初期表示時にソートアイコンを更新
 
     // Search functionality
     searchInput.addEventListener('input', (event) => {
