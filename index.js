@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderClients(filterText = '') {
+        clientsTableBody.innerHTML = ''; // Clear existing rows
 
     
         const filteredClients = clients.filter(client => {
