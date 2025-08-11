@@ -20,7 +20,12 @@ h1, h2 {
 /* Navigation */
 .nav-links {
     margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap; /* Allow wrapping on small screens */
 }
+
 .nav-links a {
     display: inline-block;
     padding: 10px 15px;
@@ -167,8 +172,29 @@ tr:hover {
 }
 
 /* Edit Page Specific Styles */
-#edit-form .form-group {
-    margin-bottom: 15px; /* Add space between form groups */
+#edit-form {
+    max-width: 600px; /* Set a max width for the form container */
+}
+
+.form-group {
+    display: grid;
+    grid-template-columns: 120px 1fr; /* 120px for label, rest for input */
+    gap: 15px; /* Space between label and input */
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    text-align: right;
+    font-weight: bold;
+    color: #495057;
+    padding-right: 10px;
+}
+
+/* Ensure inputs and wrappers take up the full cell width */
+#edit-form input[type="text"],
+#edit-form .custom-select-wrapper {
+    width: 100%;
 }
 
 #save-button {
@@ -180,7 +206,7 @@ tr:hover {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    margin-top: 20px; /* Space above the button */
+    justify-self: start; /* Align button to the start of the grid cell */
 }
 
 #save-button:hover {
@@ -203,6 +229,7 @@ table#clients-table thead th.sorted-column {
     background-color: #f8f9fa;
     border: 1px solid #e9ecef;
     border-radius: 8px;
+    justify-content: center; /* Center the grid items */
 }
 
 .info-item {
@@ -460,4 +487,9 @@ th[data-sort-key]:hover .sort-icon {
 /* Make the Add Staff button larger */
 #add-staff-button {
     padding: 12px 20px;
+}
+
+/* Increase font size for details page year filter */
+.nav-links .custom-select-trigger {
+    font-size: 1.1rem;
 }
