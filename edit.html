@@ -16,7 +16,28 @@
         </div>
 
         <div id="edit-form">
-            <p><strong>事業所名:</strong> <span id="client-name"></span></p>
+            <p><strong>事業所名:</strong> <span id="client-name-display"></span></p>
+
+            <div class="form-group">
+                <label for="client-no">No.:</label>
+                <input type="text" id="client-no">
+            </div>
+
+            <div class="form-group">
+                <label for="client-name">事業所名:</label>
+                <input type="text" id="client-name">
+            </div>
+            
+            <div class="form-group">
+                <label for="staff-select">担当者:</label>
+                <div class="custom-select-wrapper">
+                    <div class="custom-select-trigger"></div>
+                    <div class="custom-options"></div>
+                    <select id="staff-select" class="custom-select-target" style="display: none;">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+            </div>
             
             <div class="form-group">
                 <label for="fiscal-month">決算月:</label>

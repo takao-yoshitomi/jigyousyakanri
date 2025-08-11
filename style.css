@@ -419,3 +419,12 @@ th[data-sort-key]:hover .sort-icon {
 #edit-tasks-button:hover {
     background-color: #0056b3;
 }
+
+/* Increase vertical height for specific inputs and selects */
+#edit-form .form-group input[type="text"],
+#edit-form .custom-select-wrapper .custom-select-trigger,
+.add-staff-section input[type="text"] {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    font-size: 1.1rem; /* Slightly larger font */
+}
