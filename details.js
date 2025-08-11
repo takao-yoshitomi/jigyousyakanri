@@ -36,22 +36,13 @@ document.addEventListener('DOMContentLoaded', () => {
         detailsTableHead.innerHTML = '';
         detailsTableBody.innerHTML = '';
 
-        let displayClientDetails = clientDetails;
+        // clientDetails を window.clientDetails から取得するように変更
+        let displayClientDetails = window.clientDetails;
 
         if (clientNo) {
-            displayClientDetails = clientDetails.filter(client => client.no == clientNo);
+            displayClientDetails = window.clientDetails.filter(client => client.no == clientNo);
         }
 
-        // const filteredClients = displayClientDetails.filter(client => { // コメントアウト
-        //     return filterMonth === 'all' || client.fiscalMonth.includes(filterMonth);
-        // });
-
-        // if (filteredClients.length === 0) { // コメントアウト
-        //     detailsTableBody.innerHTML = '<tr><td colspan="99">該当するクライアントが見つかりません。</td></tr>
-        //     return;
-        // }
-
-        // sampleClient = filteredClients[0]; // コメントアウト
         sampleClient = displayClientDetails[0]; // 修正
 
         // sampleClient が undefined の場合に備える
@@ -59,6 +50,17 @@ document.addEventListener('DOMContentLoaded', () => {
             detailsTableBody.innerHTML = '<tr><td colspan="99">クライアントデータが不正です。</td></tr>';
             return;
         }
+
+        // monthlyTasks の tasks オブジェクトを customTasks に基づいて正規化
+        sampleClient.monthlyTasks.forEach(monthData => {
+            const newTasks = {};
+            sampleClient.customTasks.forEach(taskName => {
+                // customTasks にあるタスクは保持、なければ false を設定
+                newTasks[taskName] = monthData.tasks[taskName] !== undefined ? monthData.tasks[taskName] : false;
+            });
+            // customTasks にないタスクは削除
+            monthData.tasks = newTasks;
+        });
 
         // --- クライアント基本情報テーブルの生成 ---
         const clientInfoTable = document.createElement('table');
@@ -172,8 +174,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateMonthlyStatus(row, monthData, taskNames, clientData) {
-        const totalTasks = taskNames.length;
-        const completedTasks = Object.values(monthData.tasks).filter(Boolean).length;
+        const totalTasks = taskNames.length; // allTaskNames (定義されているタスクの総数)
+        let completedTasks = 0;
+
+        // allTaskNames に含まれるタスクのみをチェック
+        taskNames.forEach(taskName => {
+            if (monthData.tasks[taskName] === true) {
+                completedTasks++;
+            }
+        });
         
         // 該当する月次ステータスセルを見つける
         const statusRow = detailsTableBody.querySelector('tr:last-child'); // 月次ステータス行は常に最後
