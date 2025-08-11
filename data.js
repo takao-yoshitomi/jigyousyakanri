@@ -4,6 +4,7 @@
 function loadData() {
     const storedClients = localStorage.getItem('clients');
     const storedClientDetails = localStorage.getItem('clientDetails');
+    const storedStaffs = localStorage.getItem('staffs'); // staffsも取得
 
     let initialClients = [
         { no: 101, name: "株式会社アルファ", fiscalMonth: "1月", unattendedMonths: "7ヵ月", monthlyProgress: "2026年1月迄",担当者: "佐藤", accountingMethod: "記帳代行" , status: "完了" },
@@ -12,6 +13,10 @@ function loadData() {
         { no: 301, name: "有限会社デルタ", fiscalMonth: "3月", unattendedMonths: "5ヵ月", monthlyProgress: "2026年3月迄",担当者: "田中", accountingMethod: "記帳代行" , status: "2チェック待ち" },
         { no: 308, name: "株式会社イプシロン", fiscalMonth: "3月", unattendedMonths: "5ヵ月", monthlyProgress: "2026年3月迄",担当者: "渡辺", accountingMethod: "記帳代行" , status: "依頼中" }
     ];
+
+    // 担当者リストをinitialClientsから自動生成
+    const uniqueStaffs = [...new Set(initialClients.map(client => client.担当者))];
+    let initialStaffs = uniqueStaffs.sort(); // ソートして初期担当者リストを作成
 
     let initialClientDetails = [
         {
@@ -58,17 +63,20 @@ function loadData() {
 
     const clients = storedClients ? JSON.parse(storedClients) : initialClients;
     const clientDetails = storedClientDetails ? JSON.parse(storedClientDetails) : initialClientDetails;
+    const staffs = localStorage.getItem('staffs') ? JSON.parse(localStorage.getItem('staffs')) : initialStaffs; // staffsもlocalStorageからロード
 
-    return { clients, clientDetails };
+    return { clients, clientDetails, staffs };
 }
 
 // localStorageにデータを保存する関数
-function saveData(clients, clientDetails) {
+function saveData(clients, clientDetails, staffs) {
     localStorage.setItem('clients', JSON.stringify(clients));
     localStorage.setItem('clientDetails', JSON.stringify(clientDetails));
+    localStorage.setItem('staffs', JSON.stringify(staffs)); // staffsも保存
 }
 
 // グローバル変数としてエクスポート
 const data = loadData();
 window.clients = data.clients;
 window.clientDetails = data.clientDetails;
+window.staffs = data.staffs;

@@ -81,7 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- タスク・チェックボックステーブルのヘッダー生成 ---
         const taskHeaderRow = document.createElement('tr');
-        taskHeaderRow.insertCell().textContent = ''; // タスク名のための空セル
+        const itemHeaderCell = document.createElement('th'); // th要素を作成
+        itemHeaderCell.textContent = '項目';
+        taskHeaderRow.appendChild(itemHeaderCell); // th要素を追加
 
         // 決算月から12ヶ月前までの月を生成
         const fiscalMonthNum = parseInt(sampleClient.fiscalMonth.replace('月', ''));
@@ -134,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     targetClientMonthData.tasks[changedTaskName] = checkbox.checked;
                     updateMonthlyStatus(statusRow, targetClientMonthData, allTaskNames, sampleClient); // 修正
-                    saveData(clients, clientDetails);
+                    saveData(window.clients, window.clientDetails, window.staffs);
                 });
                 cell.appendChild(checkbox);
             });
@@ -287,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveTasksButton.addEventListener('click', () => {
         // 空の項目をフィルタリング
         sampleClient.customTasks = currentEditingTasks.filter(task => task !== '');
-        saveData(clients, clientDetails); // データを保存
+        saveData(window.clients, window.clientDetails, window.staffs); // データを保存
         taskEditModal.style.display = 'none';
         renderDetails(); // 詳細ページを再描画して変更を反映
     });

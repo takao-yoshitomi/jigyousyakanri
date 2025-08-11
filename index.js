@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newStatus = event.target.value;
                 client.status = newStatus; // Update client data (in memory)
                 updateStatusBackgroundColor(customSelectWrapper, newStatus);
-                saveData(clients, clientDetails); // Save updated clients to localStorage
+                saveData(window.clients, window.clientDetails, window.staffs); // Save updated clients to localStorage
             });
 
             // Add new cell for 月次進捗詳細
@@ -205,5 +205,95 @@ document.addEventListener('DOMContentLoaded', () => {
     // Search functionality
     searchInput.addEventListener('input', (event) => {
         renderClients(event.target.value);
+    });
+
+    // 管理者編集ドロップダウンの初期化
+    const adminMenuSelect = document.getElementById('admin-menu-select');
+    initializeCustomDropdown(adminMenuSelect);
+
+    // 担当者編集モーダル関連の要素を取得
+    const staffEditModal = document.getElementById('staff-edit-modal');
+    const closeStaffModalButton = staffEditModal.querySelector('.close-button');
+    const staffListContainer = document.getElementById('staff-list-container');
+    const newStaffInput = document.getElementById('new-staff-input');
+    const addStaffButton = document.getElementById('add-staff-button');
+    const saveStaffButton = document.getElementById('save-staff-button');
+    const cancelStaffButton = document.getElementById('cancel-staff-button');
+
+    let currentEditingStaffs = []; // モーダル内で編集中の担当者リスト
+
+    // 担当者リストをレンダリングする関数
+    function renderStaffList(staffs) {
+        staffListContainer.innerHTML = '';
+        staffs.forEach((staff, index) => {
+            const staffItem = document.createElement('div');
+            staffItem.classList.add('task-item'); // task-itemクラスを再利用
+            staffItem.innerHTML = `
+                <input type="text" value="${staff}">
+                <button class="delete-task-button" data-index="${index}">削除</button>
+            `;
+            staffListContainer.appendChild(staffItem);
+        });
+    }
+
+    // 管理者メニューの選択イベント
+    adminMenuSelect.addEventListener('change', (event) => {
+        if (event.target.value === 'manage-staff') {
+            currentEditingStaffs = [...window.staffs]; // 現在の担当者をコピー
+            renderStaffList(currentEditingStaffs);
+            staffEditModal.style.display = 'block';
+        }
+    });
+
+    // モーダルを閉じる
+    closeStaffModalButton.addEventListener('click', () => {
+        staffEditModal.style.display = 'none';
+    });
+
+    cancelStaffButton.addEventListener('click', () => {
+        staffEditModal.style.display = 'none';
+    });
+
+    // モーダルの外側をクリックで閉じる
+    window.addEventListener('click', (event) => {
+        if (event.target === staffEditModal) {
+            staffEditModal.style.display = 'none';
+        }
+    });
+
+    // 担当者追加ボタン
+    addStaffButton.addEventListener('click', () => {
+        const newStaffName = newStaffInput.value.trim();
+        if (newStaffName && !currentEditingStaffs.includes(newStaffName)) {
+            currentEditingStaffs.push(newStaffName);
+            renderStaffList(currentEditingStaffs);
+            newStaffInput.value = '';
+        }
+    });
+
+    // 担当者削除ボタン (イベント委譲)
+    staffListContainer.addEventListener('click', (event) => {
+        if (event.target.classList.contains('delete-task-button')) {
+            const index = parseInt(event.target.dataset.index);
+            currentEditingStaffs.splice(index, 1);
+            renderStaffList(currentEditingStaffs); // リレンダリングしてインデックスを更新
+        }
+    });
+
+    // 担当者名変更 (inputイベント)
+    staffListContainer.addEventListener('input', (event) => {
+        if (event.target.tagName === 'INPUT') {
+            const index = parseInt(event.target.closest('.task-item').querySelector('.delete-task-button').dataset.index);
+            currentEditingStaffs[index] = event.target.value.trim();
+        }
+    });
+
+    // 担当者保存ボタン
+    saveStaffButton.addEventListener('click', () => {
+        // 空の項目をフィルタリング
+        window.staffs = currentEditingStaffs.filter(staff => staff !== '');
+        saveData(window.clients, window.clientDetails, window.staffs); // データを保存
+        staffEditModal.style.display = 'none';
+        renderClients(searchInput.value); // メインページを再描画して変更を反映
     });
 });

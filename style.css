@@ -47,6 +47,7 @@ h1, h2 {
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
+    width: 250px; /* 例: 幅を広げる */
 }
 
 /* Table Styles */
@@ -181,7 +182,7 @@ table#clients-table thead th.sorted-column {
 /* Client Info Table Styles */
 .client-info-table {
     width: auto; /* または具体的な幅 */
-    max-width: 400px; /* 例: 最大幅を設定 */
+    max-width: 500px; /* 例: 最大幅を少し広げる */
     margin-bottom: 20px; /* テーブルの下に余白 */
 }
 
@@ -190,6 +191,9 @@ table#clients-table thead th.sorted-column {
     padding: 8px 10px; /* パディングを調整 */
     white-space: nowrap; /* テキストの折り返しを防ぐ */
     border: 1px solid #ddd; /* 枠線を追加 */
+    font-size: 1.1rem; /* 例: フォントサイズを大きくする */
+    text-align: center; /* センター揃え */
+    width: 33%; /* 各セルの幅を均等に */
 }
 
 .client-info-table th {
@@ -350,4 +354,30 @@ th[data-sort-key]:hover .sort-icon {
 
 #cancel-tasks-button:hover {
     background-color: #5a6268;
+}
+
+/* Admin Controls */
+.admin-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 50;
+}
+
+.admin-controls .custom-select-wrapper {
+    min-width: 180px;
+}
+
+#edit-tasks-button {
+    padding: 10px 20px; /* パディングを調整してボタンを大きくする */
+    font-size: 1rem; /* フォントサイズを調整 */
+    border: 1px solid #ccc; /* この行を追加 */
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-left: 10px; /* 必要に応じてマージンを調整 */
+}
+
+#edit-tasks-button:hover {
+    background-color: #0056b3;
 }
