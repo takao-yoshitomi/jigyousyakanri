@@ -178,6 +178,27 @@ th.sorted-column {
     font-weight: bold;
 }
 
+/* Client Info Table Styles */
+.client-info-table {
+    width: auto; /* または具体的な幅 */
+    max-width: 400px; /* 例: 最大幅を設定 */
+    margin-bottom: 20px; /* テーブルの下に余白 */
+}
+
+.client-info-table th,
+.client-info-table td {
+    padding: 8px 10px; /* パディングを調整 */
+    white-space: nowrap; /* テキストの折り返しを防ぐ */
+    border: 1px solid #ddd; /* 枠線を追加 */
+}
+
+.client-info-table th {
+    background-color: #eef2f5;
+    color: #333;
+    font-weight: bold;
+    text-align: left;
+}
+
 /* Sort Icon Styles */
 .sort-icon {
     display: inline-block;

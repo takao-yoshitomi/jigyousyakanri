@@ -19,26 +19,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // '月次進捗詳細' はソート対象外
     };
 
-    // 既存のヘッダーにdata-sort-keyとsort-iconを追加
-    Array.from(clientsTableHeadRow.children).forEach(th => {
-        const headerText = th.textContent.trim();
-        if (headerMap[headerText]) {
-            th.dataset.sortKey = headerMap[headerText];
-            th.innerHTML = `${headerText} <span class="sort-icon"></span>`;
-        }
-    });
-
     // Add new header for No.
     const noTh = document.createElement('th');
     noTh.textContent = 'No.';
-    noTh.dataset.sortKey = 'no'; // No.にもソートキーを追加
-    noTh.innerHTML = `No. <span class="sort-icon"></span>`;
     clientsTableHeadRow.insertBefore(noTh, clientsTableHeadRow.firstChild); // Add No. at the beginning
 
     // Add new header for 月次進捗詳細
     const newTh = document.createElement('th');
     newTh.textContent = '月次進捗詳細';
     clientsTableHeadRow.appendChild(newTh);
+
+    // すべてのヘッダーにdata-sort-keyとsort-iconを追加し、イベントリスナーを設定
+    Array.from(clientsTableHeadRow.children).forEach(th => {
+        const headerText = th.textContent.trim();
+        if (headerMap[headerText]) {
+            th.dataset.sortKey = headerMap[headerText];
+            th.innerHTML = `${headerText} <span class="sort-icon"></span>`;
+        } else if (headerText === 'No.') { // No.ヘッダーは特別扱い
+            th.dataset.sortKey = 'no';
+            th.innerHTML = `No. <span class="sort-icon"></span>`;
+        }
+    });
 
     // ヘッダーにクリックイベントリスナーを設定
     clientsTableHeadRow.addEventListener('click', (event) => {
