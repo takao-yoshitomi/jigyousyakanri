@@ -56,11 +56,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Ensure historicalTasks object exists for safety
         sampleClient.historicalTasks = sampleClient.historicalTasks || {};
-
-        // Check if the current year's tasks are finalized
         const isYearFinalized = !!sampleClient.historicalTasks[currentYearSelection];
+
+        // --- Data Structure Migration & Normalization ---
+        sampleClient.monthlyTasks.forEach(monthData => {
+            const tasksToEnsure = Object.keys(monthData.tasks);
+            
+            tasksToEnsure.forEach(taskName => {
+                const taskData = monthData.tasks[taskName];
+                if (taskData === undefined || taskData === null || typeof taskData === 'boolean') {
+                    monthData.tasks[taskName] = { 
+                        checked: !!taskData, // Converts null/undefined to false
+                        note: '' 
+                    };
+                }
+            });
+        });
 
         // Update button and status visibility
         if (isYearFinalized) {
@@ -75,20 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
             finalizeYearButton.style.display = 'inline-block';
         }
 
-        // Non-destructive normalization of task data
-        sampleClient.monthlyTasks.forEach(monthData => {
-            const tasksToEnsure = isYearFinalized 
-                ? sampleClient.historicalTasks[currentYearSelection] 
-                : (sampleClient.customTasks || []);
-            
-            tasksToEnsure.forEach(taskName => {
-                if (monthData.tasks[taskName] === undefined) {
-                    monthData.tasks[taskName] = false;
-                }
-            });
-        });
-
-        // --- Render Client Info Table ---
         const clientInfoTable = document.createElement('table');
         clientInfoTable.className = 'client-info-table';
         clientInfoTable.innerHTML = `<tbody>
@@ -97,16 +95,12 @@ document.addEventListener('DOMContentLoaded', () => {
         </tbody>`;
         clientInfoArea.appendChild(clientInfoTable);
 
-        // --- Generate Month Headers ---
         const fiscalMonthNum = parseInt(sampleClient.fiscalMonth.replace('月', ''));
         monthsToDisplay = [];
         for (let i = 0; i < 12; i++) {
             let month = fiscalMonthNum - i;
             let year = parseInt(currentYearSelection);
-            if (month <= 0) {
-                month += 12;
-                year--;
-            }
+            if (month <= 0) { month += 12; year--; }
             monthsToDisplay.unshift(`${year}年${month}月`);
         }
 
@@ -120,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
             monthHeader.textContent = monthStr;
             monthHeader.classList.add('month-header');
             monthHeader.dataset.monthIndex = index;
-            if (!isYearFinalized) { // Only add listener if not finalized
+            if (!isYearFinalized) {
                 monthHeader.addEventListener('click', onMonthHeaderClick);
             } else {
                 monthHeader.style.cursor = 'not-allowed';
@@ -129,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         detailsTableHead.appendChild(taskHeaderRow);
 
-        // --- Render Main Task Table Body ---
         allTaskNames = isYearFinalized
             ? sampleClient.historicalTasks[currentYearSelection]
             : (sampleClient.customTasks || []);
@@ -139,30 +132,53 @@ document.addEventListener('DOMContentLoaded', () => {
             taskRow.insertCell().textContent = taskName;
             monthsToDisplay.forEach(monthStr => {
                 const cell = taskRow.insertCell();
+
+                let monthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
+                if (!monthData) {
+                    monthData = { month: monthStr, tasks: {}, url: '', memo: '' };
+                    sampleClient.monthlyTasks.push(monthData);
+                }
+                if (!monthData.tasks[taskName]) {
+                     monthData.tasks[taskName] = { checked: false, note: '' };
+                }
+                const taskData = monthData.tasks[taskName];
+
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.className = 'task-checkbox';
+                checkbox.checked = taskData.checked;
+                
+                const noteInput = document.createElement('input');
+                noteInput.type = 'text';
+                noteInput.className = 'task-note-input';
+                noteInput.value = taskData.note || '';
+                noteInput.placeholder = 'メモ...';
+
                 if (isYearFinalized) {
                     checkbox.disabled = true;
+                    noteInput.disabled = true;
                 }
-                const targetMonthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
-                checkbox.checked = targetMonthData ? (targetMonthData.tasks[taskName] || false) : false;
 
                 checkbox.addEventListener('change', () => {
-                    let monthDataToUpdate = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
-                    if (!monthDataToUpdate) {
-                        monthDataToUpdate = { month: monthStr, tasks: {}, url: '', memo: '' };
-                        sampleClient.monthlyTasks.push(monthDataToUpdate);
-                    }
-                    monthDataToUpdate.tasks[taskName] = checkbox.checked;
-                    updateMonthlyStatus(monthDataToUpdate, allTaskNames);
+                    taskData.checked = checkbox.checked;
+                    updateMonthlyStatus(monthData, allTaskNames);
                     saveData(window.clients, window.clientDetails, window.staffs);
                 });
+
+                const debouncedNoteSave = debounce(value => {
+                    taskData.note = value;
+                    saveData(window.clients, window.clientDetails, window.staffs);
+                }, 1000);
+
+                noteInput.addEventListener('input', () => {
+                    debouncedNoteSave(noteInput.value);
+                });
+
                 cell.appendChild(checkbox);
+                cell.appendChild(noteInput);
             });
         });
 
-        // --- Render Status Row in Main Table ---
         const statusRow = detailsTableBody.insertRow();
         statusRow.insertCell().textContent = '月次ステータス';
         monthsToDisplay.forEach(monthStr => {
@@ -172,7 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatusCell(statusCell, targetMonthData, allTaskNames);
         });
 
-        // --- Render Notes Table ---
         notesTableHead.appendChild(taskHeaderRow.cloneNode(true));
         const urlRow = notesTableBody.insertRow();
         urlRow.insertCell().textContent = 'URL';
@@ -236,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  cell.style.backgroundColor = '#f0f0f0';
                  return;
             }
-            const completedTasks = taskNames.filter(task => monthData.tasks[task]).length;
+            const completedTasks = taskNames.filter(task => monthData.tasks[task] && monthData.tasks[task].checked).length;
             if (totalTasks > 0 && totalTasks === completedTasks) {
                 cell.textContent = '月次完了';
                 cell.style.backgroundColor = '#ccffcc';
@@ -268,9 +283,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const monthIndex = parseInt(headerCell.dataset.monthIndex);
         const monthStr = monthsToDisplay[monthIndex];
 
-        const checkboxesInColumn = Array.from(detailsTableBody.querySelectorAll(`tr td:nth-child(${monthIndex + 2}) input[type="checkbox"]`));
-
-        const shouldCheckAll = checkboxesInColumn.some(cb => !cb.checked);
+        const shouldCheckAll = !allTaskNames.every(taskName => {
+            const monthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
+            return monthData && monthData.tasks[taskName] && monthData.tasks[taskName].checked;
+        });
 
         let monthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
         if (!monthData) {
@@ -278,15 +294,14 @@ document.addEventListener('DOMContentLoaded', () => {
             sampleClient.monthlyTasks.push(monthData);
         }
 
-        checkboxesInColumn.forEach((checkbox, rowIndex) => {
-            checkbox.checked = shouldCheckAll;
-            const taskName = allTaskNames[rowIndex];
-            if (taskName) {
-                monthData.tasks[taskName] = shouldCheckAll;
+        allTaskNames.forEach(taskName => {
+            if (!monthData.tasks[taskName]) {
+                 monthData.tasks[taskName] = { checked: false, note: '' };
             }
+            monthData.tasks[taskName].checked = shouldCheckAll;
         });
 
-        updateMonthlyStatus(monthData, allTaskNames);
+        renderDetails(); // Re-render to update all checkboxes and statuses at once
         saveData(window.clients, window.clientDetails, window.staffs);
     }
 

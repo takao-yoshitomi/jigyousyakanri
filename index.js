@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const addStaffButton = document.getElementById('add-staff-button');
     const saveStaffButton = document.getElementById('save-staff-button');
     const cancelStaffButton = document.getElementById('cancel-staff-button');
+    const exportDataButton = document.getElementById('export-data-button');
+    const importDataButton = document.getElementById('import-data-button');
+    const importFileInput = document.getElementById('import-file-input');
 
     // --- State Variables ---
     let currentSortKey = 'fiscalMonth';
@@ -95,11 +98,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sorting listener
         clientsTableHeadRow.addEventListener('click', handleSortClick);
 
-        // Staff Modal listeners
+        // Button listeners
         document.getElementById('manage-staff-button').addEventListener('click', openStaffModal);
         document.getElementById('add-client-button').addEventListener('click', () => {
             window.location.href = 'edit.html';
         });
+        exportDataButton.addEventListener('click', exportData);
+        importDataButton.addEventListener('click', () => importFileInput.click());
+        importFileInput.addEventListener('change', importData);
+
+        // Staff Modal listeners
         closeStaffModalButton.addEventListener('click', () => staffEditModal.style.display = 'none');
         cancelStaffButton.addEventListener('click', () => staffEditModal.style.display = 'none');
         window.addEventListener('click', (event) => {
@@ -111,6 +119,64 @@ document.addEventListener('DOMContentLoaded', () => {
         saveStaffButton.addEventListener('click', saveStaff);
         staffListContainer.addEventListener('click', handleStaffListClick);
         staffListContainer.addEventListener('input', handleStaffListInput);
+    }
+
+    // --- Data I/O Functions ---
+    function exportData() {
+        const dataToExport = {
+            clients: window.clients,
+            clientDetails: window.clientDetails,
+            staffs: window.staffs
+        };
+
+        const jsonString = JSON.stringify(dataToExport, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        const date = new Date();
+        const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        a.download = `jigyousyakanri-backup-${dateString}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('データのエクスポートが完了しました。');
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedData = JSON.parse(e.target.result);
+
+                if (!importedData.clients || !importedData.clientDetails || !importedData.staffs || !Array.isArray(importedData.clients) || !Array.isArray(importedData.clientDetails) || !Array.isArray(importedData.staffs)) {
+                    throw new Error('無効なファイル形式です。');
+                }
+
+                if (confirm('ファイルをインポートすると、現在のデータはすべて上書きされます。よろしいですか？')) {
+                    window.clients = importedData.clients;
+                    window.clientDetails = importedData.clientDetails;
+                    window.staffs = importedData.staffs;
+
+                    saveData(window.clients, window.clientDetails, window.staffs);
+                    
+                    alert('データのインポートが完了しました。ページを更新します。');
+                    window.location.reload();
+                }
+            } catch (error) {
+                alert(`インポートに失敗しました: ${error.message}`);
+            } finally {
+                importFileInput.value = '';
+            }
+        };
+        reader.readAsText(file);
     }
 
     // --- Rendering and Filtering ---
@@ -163,7 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
             row.insertCell().textContent = client.担当者;
             row.insertCell().textContent = client.accountingMethod;
             
-            // Status dropdown cell
             const statusCell = row.insertCell();
             const customSelectWrapper = createStatusDropdown(client);
             statusCell.appendChild(customSelectWrapper);

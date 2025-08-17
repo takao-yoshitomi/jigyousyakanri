@@ -157,17 +157,26 @@ tr:hover {
     table-layout: fixed; /* Add this for consistent column widths */
 }
 
+#notes-table td {
+    padding: 0 !important; /* Remove padding from the cell */
+}
+
 #notes-table input[type="text"],
 #notes-table textarea {
     width: 100%;
-    box-sizing: border-box; /* Ensures padding and border are included in the width */
-    border: 1px solid #ddd; /* A light border to define the fields */
-    padding: 4px;
-    background-color: transparent; /* Make background transparent */
+    height: 100%;
+    box-sizing: border-box;
+    border: none; /* Remove the input's border */
+    outline: none; /* Remove focus outline */
+    padding: 12px 15px; /* Add padding inside the input */
+    background-color: transparent;
+    font-family: inherit; /* Use the same font as the rest of the table */
+    font-size: inherit;
 }
 
 #notes-table textarea {
     resize: vertical; /* Allow vertical resize only */
+    min-height: 150px;
 }
 
 .details-table th.month-header {
@@ -196,9 +205,27 @@ tr:hover {
 
 /* Checkbox styling */
 .task-checkbox {
-    transform: scale(1.2); /* Make checkboxes slightly larger */
-    margin: 0 auto; /* Center checkbox */
-    display: block;
+    float: left; /* Float the checkbox to the left */
+    transform: scale(1.2);
+    margin-right: 8px; /* Add space between checkbox and note input */
+}
+
+.task-note-input {
+    display: block; /* Make the input a block-level element */
+    overflow: hidden; /* This makes it take up the remaining space */
+    width: auto;
+    border: 1px solid #ddd;
+    padding: 4px 6px;
+    border-radius: 3px;
+    background-color: #fff;
+    transition: background-color 0.3s;
+    font-size: 0.9rem;
+}
+
+.task-note-input:disabled {
+    background-color: #f7f7f7;
+    cursor: not-allowed;
+    border-color: #eee;
 }
 
 /* Monthly status cell */
@@ -610,4 +637,28 @@ th[data-sort-key]:hover .sort-icon {
 }
 .unlock-button:hover {
     background-color: #5a6268;
+}
+
+/* Styles for cells in the main task table */
+.task-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between checkbox and note input */
+    padding: 6px 8px !important; /* Override default padding to keep rows compact */
+}
+
+.task-note-input {
+    width: 100%; /* Take remaining space */
+    border: 1px solid #ddd;
+    padding: 4px 6px;
+    border-radius: 3px;
+    background-color: #fff;
+    transition: background-color 0.3s;
+    font-size: 0.9rem;
+}
+
+.task-note-input:disabled {
+    background-color: #f7f7f7;
+    cursor: not-allowed;
+    border-color: #eee;
 }
