@@ -511,7 +511,7 @@ th[data-sort-key]:hover .sort-icon {
     right: 30px;
     z-index: 50;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 10px;
 }
 
