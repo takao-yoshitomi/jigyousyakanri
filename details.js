@@ -188,7 +188,40 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatusCell(statusCell, targetMonthData, allTaskNames);
         });
 
-        notesTableHead.appendChild(taskHeaderRow.cloneNode(true));
+        // --- Render Notes Table ---
+        // Build a new header for the notes table with URL buttons
+        const notesHeaderRow = document.createElement('tr');
+        notesHeaderRow.insertCell().textContent = '項目';
+        monthsToDisplay.forEach((monthStr, index) => {
+            const th = notesHeaderRow.insertCell();
+            th.style.textAlign = 'center';
+
+            const monthText = document.createTextNode(monthStr);
+            th.appendChild(monthText);
+            th.appendChild(document.createElement('br'));
+
+            const openUrlBtn = document.createElement('button');
+            openUrlBtn.textContent = 'URLを開く';
+            openUrlBtn.className = 'url-header-button';
+            openUrlBtn.dataset.columnIndex = index + 1; // +1 for the initial '項目' cell
+
+            openUrlBtn.addEventListener('click', (e) => {
+                const colIndex = e.currentTarget.dataset.columnIndex;
+                const urlInput = notesTableBody.querySelector(`tr:first-child td:nth-child(${parseInt(colIndex) + 1}) input`);
+                if (urlInput) {
+                    let url = urlInput.value.trim();
+                    if (url) {
+                        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                            url = 'http://' + url;
+                        }
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                    }
+                }
+            });
+            th.appendChild(openUrlBtn);
+        });
+        notesTableHead.appendChild(notesHeaderRow);
+
         const urlRow = notesTableBody.insertRow();
         urlRow.insertCell().textContent = 'URL';
         const memoRow = notesTableBody.insertRow();
@@ -198,8 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let targetMonthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr) || { url: '', memo: '' };
             
             const urlCell = urlRow.insertCell();
-            urlCell.className = 'url-cell-container'; // Add class for styling
-
             const urlInput = document.createElement('input');
             urlInput.type = 'text';
             urlInput.value = targetMonthData.url;
@@ -213,22 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 monthDataToUpdate.url = e.target.value;
                 saveData(window.clients, window.clientDetails, window.staffs);
             });
-
-            const openBtn = document.createElement('button');
-            openBtn.textContent = '開く';
-            openBtn.className = 'open-url-button';
-            openBtn.addEventListener('click', () => {
-                let url = urlInput.value.trim();
-                if (url) {
-                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                        url = 'http://' + url;
-                    }
-                    window.open(url, '_blank', 'noopener,noreferrer');
-                }
-            });
-
             urlCell.appendChild(urlInput);
-            urlCell.appendChild(openBtn);
 
             const memoCell = memoRow.insertCell();
             const memoTextarea = document.createElement('textarea');

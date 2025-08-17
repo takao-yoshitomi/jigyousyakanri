@@ -645,26 +645,15 @@ th[data-sort-key]:hover .sort-icon {
     background-color: #5a6268;
 }
 
-/* Styles for cells in the main task table */
-.task-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px; /* Space between checkbox and note input */
-    padding: 6px 8px !important; /* Override default padding to keep rows compact */
+.url-header-button {
+    font-size: 0.8rem;
+    padding: 2px 6px;
+    margin-top: 4px;
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    border-radius: 4px;
 }
-
-.task-note-input {
-    width: 100%; /* Take remaining space */
-    border: 1px solid #ddd;
-    padding: 4px 6px;
-    border-radius: 3px;
-    background-color: #fff;
-    transition: background-color 0.3s;
-    font-size: 0.9rem;
-}
-
-.task-note-input:disabled {
-    background-color: #f7f7f7;
-    cursor: not-allowed;
-    border-color: #eee;
+.url-header-button:hover {
+    background-color: #e0e0e0;
 }
