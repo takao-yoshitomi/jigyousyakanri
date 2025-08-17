@@ -132,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
             taskRow.insertCell().textContent = taskName;
             monthsToDisplay.forEach(monthStr => {
                 const cell = taskRow.insertCell();
+                cell.className = 'task-input-cell'; // Add class for styling
 
                 let monthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
                 if (!monthData) {
@@ -152,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 noteInput.type = 'text';
                 noteInput.className = 'task-note-input';
                 noteInput.value = taskData.note || '';
-                noteInput.placeholder = 'メモ...';
 
                 if (isYearFinalized) {
                     checkbox.disabled = true;
@@ -198,6 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let targetMonthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr) || { url: '', memo: '' };
             
             const urlCell = urlRow.insertCell();
+            urlCell.className = 'url-cell-container'; // Add class for styling
+
             const urlInput = document.createElement('input');
             urlInput.type = 'text';
             urlInput.value = targetMonthData.url;
@@ -211,7 +213,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 monthDataToUpdate.url = e.target.value;
                 saveData(window.clients, window.clientDetails, window.staffs);
             });
+
+            const openBtn = document.createElement('button');
+            openBtn.textContent = '開く';
+            openBtn.className = 'open-url-button';
+            openBtn.addEventListener('click', () => {
+                let url = urlInput.value.trim();
+                if (url) {
+                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                        url = 'http://' + url;
+                    }
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                }
+            });
+
             urlCell.appendChild(urlInput);
+            urlCell.appendChild(openBtn);
 
             const memoCell = memoRow.insertCell();
             const memoTextarea = document.createElement('textarea');

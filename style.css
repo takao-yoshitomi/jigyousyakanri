@@ -203,29 +203,35 @@ tr:hover {
     background-color: #f1f1f1; /* Match hover row background */
 }
 
+.details-table .task-input-cell {
+    padding: 0 !important;
+    vertical-align: middle;
+}
+
 /* Checkbox styling */
 .task-checkbox {
-    float: left; /* Float the checkbox to the left */
+    float: left;
     transform: scale(1.2);
-    margin-right: 8px; /* Add space between checkbox and note input */
+    margin: 9px; /* Adjust margin for vertical alignment and spacing */
 }
 
 .task-note-input {
-    display: block; /* Make the input a block-level element */
-    overflow: hidden; /* This makes it take up the remaining space */
+    display: block;
+    overflow: hidden;
     width: auto;
-    border: 1px solid #ddd;
-    padding: 4px 6px;
-    border-radius: 3px;
-    background-color: #fff;
-    transition: background-color 0.3s;
+    box-sizing: border-box;
+    height: 100%;
+    padding: 9px 8px 9px 0; /* Adjust padding */
+    border: none;
+    outline: none;
+    background-color: transparent;
     font-size: 0.9rem;
+    border-radius: 0;
 }
 
 .task-note-input:disabled {
     background-color: #f7f7f7;
     cursor: not-allowed;
-    border-color: #eee;
 }
 
 /* Monthly status cell */
