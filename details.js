@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
         yearFilter.value = storedYear;
     }
     initializeCustomDropdown(yearFilter);
-    initializeCustomDropdown(yearFilter);
     let sampleClient;
     let monthsToDisplay = [];
     let allTaskNames = []; // Declare globally within DOMContentLoaded scope
