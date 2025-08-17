@@ -162,11 +162,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 checkbox.addEventListener('change', () => {
                     taskData.checked = checkbox.checked;
                     updateMonthlyStatus(monthData, allTaskNames);
+                    sampleClient.lastUpdated = Date.now();
                     saveData(window.clients, window.clientDetails, window.staffs);
                 });
 
                 const debouncedNoteSave = debounce(value => {
                     taskData.note = value;
+                    sampleClient.lastUpdated = Date.now();
                     saveData(window.clients, window.clientDetails, window.staffs);
                 }, 1000);
 
@@ -242,6 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     sampleClient.monthlyTasks.push(monthDataToUpdate);
                 }
                 monthDataToUpdate.url = e.target.value;
+                sampleClient.lastUpdated = Date.now();
                 saveData(window.clients, window.clientDetails, window.staffs);
             });
             urlCell.appendChild(urlInput);
@@ -259,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     sampleClient.monthlyTasks.push(monthDataToUpdate);
                 }
                 monthDataToUpdate.memo = value;
+                sampleClient.lastUpdated = Date.now();
                 saveData(window.clients, window.clientDetails, window.staffs);
 
                 const originalColor = memoTextarea.style.backgroundColor;
@@ -335,6 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         renderDetails(); // Re-render to update all checkboxes and statuses at once
+        sampleClient.lastUpdated = Date.now();
         saveData(window.clients, window.clientDetails, window.staffs);
     }
 
@@ -345,6 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sampleClient.customTasks = [...historicalList];
             }
             delete sampleClient.historicalTasks[currentYearSelection];
+            sampleClient.lastUpdated = Date.now();
             saveData(window.clients, window.clientDetails, window.staffs);
             renderDetails();
         }
@@ -359,6 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm(`表示中の年度（${currentYearSelection}年）のタスク項目を確定します。確定後は、この年度の項目リストの変更やチェックができなくなります。よろしいですか？`)) {
             sampleClient.historicalTasks = sampleClient.historicalTasks || {};
             sampleClient.historicalTasks[currentYearSelection] = [...(sampleClient.customTasks || [])];
+            sampleClient.lastUpdated = Date.now();
             saveData(window.clients, window.clientDetails, window.staffs);
             renderDetails();
         }
@@ -423,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveTasksButton.addEventListener('click', () => {
         sampleClient.customTasks = currentEditingTasks.filter(task => task !== '');
+        sampleClient.lastUpdated = Date.now();
         saveData(window.clients, window.clientDetails, window.staffs);
         taskEditModal.style.display = 'none';
         renderDetails();

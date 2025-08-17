@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '決算月': 'fiscalMonth',
         '未入力期間': 'unattendedMonths',
         '月次進捗': 'monthlyProgress',
-        '担当者': '担当者',
+        '最終更新': 'lastUpdated',
         '経理方式': 'accountingMethod',
         '進捗ステータス': 'status'
     };
@@ -290,6 +290,21 @@ document.addEventListener('DOMContentLoaded', () => {
             row.insertCell().textContent = client.fiscalMonth;
             row.insertCell().textContent = client.unattendedMonths;
             row.insertCell().textContent = client.monthlyProgress;
+            // 最終更新日時の表示
+            const clientDetail = window.clientDetails.find(detail => detail.no === client.no);
+            let lastUpdatedDisplay = '未更新';
+            if (clientDetail && clientDetail.lastUpdated) {
+                const date = new Date(clientDetail.lastUpdated);
+                if (!isNaN(date)) { // 有効な日付かチェック
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    lastUpdatedDisplay = `${year}年${month}月${day}日 ${hours}:${minutes}`;
+                }
+            }
+            row.insertCell().textContent = lastUpdatedDisplay; // ここに最終更新日時を表示
             row.insertCell().textContent = client.担当者;
             row.insertCell().textContent = client.accountingMethod;
             
