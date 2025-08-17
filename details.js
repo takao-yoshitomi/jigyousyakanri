@@ -31,11 +31,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         yearFilter.appendChild(option);
     }
-    initializeCustomDropdown(yearFilter);
 
     const urlParams = new URLSearchParams(window.location.search);
     const clientNo = urlParams.get('no');
     let currentYearSelection = yearFilter.value;
+
+    // 前回選択された年度をlocalStorageから読み込む
+    const lastSelectedYearKey = `lastSelectedYear_${clientNo}`;
+    const storedYear = localStorage.getItem(lastSelectedYearKey);
+    if (storedYear) {
+        currentYearSelection = storedYear;
+        yearFilter.value = storedYear;
+    }
+    initializeCustomDropdown(yearFilter);
     let sampleClient;
     let monthsToDisplay = [];
     let allTaskNames = []; // Declare globally within DOMContentLoaded scope
@@ -358,6 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     yearFilter.addEventListener('change', (event) => {
         currentYearSelection = event.target.value;
+        localStorage.setItem(lastSelectedYearKey, currentYearSelection);
         renderDetails();
     });
 
