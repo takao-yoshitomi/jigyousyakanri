@@ -15,9 +15,11 @@ function initializeCustomDropdown(selectElement) {
         return;
     }
 
-    // Set initial display text
-    // Check if selectElement has options before accessing them
-    if (selectElement.options.length > 0) {
+    // Set initial display text based on current value
+    const selectedOption = Array.from(selectElement.options).find(option => option.value === selectElement.value);
+    if (selectedOption) {
+        trigger.textContent = selectedOption.textContent;
+    } else if (selectElement.options.length > 0) {
         trigger.textContent = selectElement.options[selectElement.selectedIndex].textContent;
     } else {
         trigger.textContent = "選択してください"; // Default text if no options

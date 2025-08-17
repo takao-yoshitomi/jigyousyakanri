@@ -9,23 +9,28 @@
 </head>
 <body>
     <div class="container">
-        <h1>顧客進捗管理 - 詳細</h1>
-        <div class="nav-links">
-            <a href="index.html">メイン画面に戻る</a>
-            <label for="year-filter">年度を選択してください:</label>
-            <div class="custom-select-wrapper">
-                <div class="custom-select-trigger"></div>
-                <div class="custom-options"></div>
-                <select id="year-filter" class="custom-dropdown" style="display: none;">
-                    <!-- JavaScriptでオプションを生成 -->
-                </select>
+        <div class="sticky-header-area">
+            <h1>顧客進捗管理 - 詳細</h1>
+            <div class="nav-links">
+                <a href="index.html">メイン画面に戻る</a>
+                <label for="year-filter">年度を選択してください:</label>
+                <div class="custom-select-wrapper">
+                    <div class="custom-select-trigger"></div>
+                    <div class="custom-options"></div>
+                    <select id="year-filter" class="custom-dropdown" style="display: none;">
+                        <!-- JavaScriptでオプションを生成 -->
+                    </select>
+                </div>
+                            <button id="edit-tasks-button">項目の変更</button>
+                <button id="finalize-year-button">この年度の項目を確定</button>
+                <span id="finalized-status" style="display: none; color: green; font-weight: bold; margin-left: 10px;"></span>
             </div>
-                        <button id="edit-tasks-button">項目の変更</button>
-            <button id="finalize-year-button">この年度の項目を確定</button>
-            <span id="finalized-status" style="display: none; color: green; font-weight: bold; margin-left: 10px;"></span>
-        </div>
 
-        
+            <!-- クライアント基本情報表示エリア -->
+            <div id="client-info-area">
+                <!-- JavaScriptでテーブルを生成 -->
+            </div>
+        </div>
 
         <!-- タスク編集モーダル -->
         <div id="task-edit-modal" class="modal">
@@ -44,12 +49,6 @@
                     <button id="cancel-tasks-button">キャンセル</button>
                 </div>
             </div>
-        </div>
-        </div>
-
-        <!-- クライアント基本情報表示エリア -->
-        <div id="client-info-area">
-            <!-- JavaScriptでテーブルを生成 -->
         </div>
 
         <!-- タスク・チェックボックス表示エリア -->

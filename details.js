@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
         yearFilter.value = storedYear;
     }
     initializeCustomDropdown(yearFilter);
+    initializeCustomDropdown(yearFilter);
     let sampleClient;
     let monthsToDisplay = [];
     let allTaskNames = []; // Declare globally within DOMContentLoaded scope
@@ -167,11 +168,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     noteInput.disabled = true;
                 }
 
+                // ここでセルの背景色を初期設定
+                if (taskData.checked) {
+                    cell.classList.add('task-completed'); // 新しいクラスを追加
+                } else {
+                    cell.classList.remove('task-completed');
+                }
+
                 checkbox.addEventListener('change', () => {
                     taskData.checked = checkbox.checked;
                     updateMonthlyStatus(monthData, allTaskNames);
                     sampleClient.lastUpdated = Date.now();
                     saveData(window.clients, window.clientDetails, window.staffs);
+
+                    // チェックボックスの状態に応じてクラスをトグル
+                    if (checkbox.checked) {
+                        cell.classList.add('task-completed');
+                    } else {
+                        cell.classList.remove('task-completed');
+                    }
                 });
 
                 const debouncedNoteSave = debounce(value => {
