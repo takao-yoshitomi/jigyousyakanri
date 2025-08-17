@@ -529,3 +529,85 @@ th[data-sort-key]:hover .sort-icon {
 .nav-links .custom-select-trigger {
     font-size: 1.1rem;
 }
+
+/* Add space between dropdowns on the main page */
+.controls .custom-select-wrapper {
+    margin-right: 15px; /* Add right margin */
+}
+
+/* Add space between dropdowns on the edit page */
+#edit-form .form-group .custom-select-wrapper {
+    margin-bottom: 10px; /* Add bottom margin */
+}
+
+/* Staff Modal Specific Styles */
+.add-staff-section {
+    display: flex;
+    margin-top: 20px;
+    align-items: center; /* Align items vertically */
+}
+
+#new-staff-input {
+    flex-grow: 1;
+    padding: 12px; /* Increase padding */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 10px;
+    font-size: 1.1rem; /* Increase font size */
+}
+
+#add-staff-button {
+    padding: 12px 20px; /* Increase padding */
+    font-size: 1rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#add-staff-button:hover {
+    background-color: #0056b3;
+}
+
+#save-staff-button {
+    padding: 12px 25px; /* Larger padding */
+    font-size: 1.1rem; /* Larger font size */
+}
+
+#cancel-staff-button {
+    padding: 12px 25px; /* Larger padding */
+    font-size: 1.1rem; /* Larger font size */
+}
+
+/* Adjust the input field inside the staff list */
+.task-item .task-input {
+    padding: 12px; /* Increase padding */
+    font-size: 1.1rem; /* Increase font size */
+}
+
+/* Adjust the delete button inside the staff list */
+.task-item .delete-task-button {
+    padding: 12px 20px; /* Increase padding */
+}
+
+/* Adjust the No. span */
+.task-item .staff-no {
+    font-size: 1.1rem; /* Increase font size */
+    padding-right: 10px; /* Add some space */
+}
+
+/* Unlock Button Style */
+.unlock-button {
+    background-color: #6c757d; /* A neutral gray */
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease;
+}
+.unlock-button:hover {
+    background-color: #5a6268;
+}
