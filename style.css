@@ -64,6 +64,38 @@ table {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.client-info-table {
+    max-width: 600px; /* Adjust as needed */
+    margin-left: 0; /* Align to left */
+    margin-right: auto; /* Align to left */
+}
+
+.client-info-table th,
+.client-info-table td {
+    padding: 8px 10px; /* Reduce padding */
+    text-align: center; /* Center align content */
+}
+
+.client-info-table th:nth-child(1), /* No. */
+.client-info-table td:nth-child(1) {
+    width: 50px;
+}
+
+.client-info-table th:nth-child(2), /* 事業所名 */
+.client-info-table td:nth-child(2) {
+    width: 250px;
+}
+
+.client-info-table th:nth-child(3), /* 決算月 */
+.client-info-table td:nth-child(3) {
+    width: 100px;
+}
+
+.client-info-table th:nth-child(4), /* 担当者 */
+.client-info-table td:nth-child(4) {
+    width: 150px;
+}
+
 th, td {
     padding: 12px 15px;
     border: 1px solid #ddd;
