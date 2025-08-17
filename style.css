@@ -13,7 +13,7 @@ h1, h2 {
     background-color: #fff;
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* シャドウを追加 */
     margin-bottom: 20px;
 }
 
@@ -687,4 +687,19 @@ th[data-sort-key]:hover .sort-icon {
     margin-bottom: 20px; /* 下のテーブルとの間隔 */
     padding-bottom: 10px; /* 線と内容の間のスペース */
     border-bottom: 1px solid #ddd; /* 線 */
+}
+
+button {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* 立体感のためのシャドウ */
+    transition: all 0.2s ease; /* ホバー時のアニメーション */
+}
+
+button:hover {
+    transform: translateY(-2px); /* 少し浮き上がる */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* シャドウを強調 */
+}
+
+button:active {
+    transform: translateY(0); /* 押下時に元に戻る */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); /* シャドウを弱める */
 }
