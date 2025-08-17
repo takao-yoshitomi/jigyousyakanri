@@ -530,7 +530,7 @@ th[data-sort-key]:hover .sort-icon {
     background-color: #0056b3;
 }
 
-#edit-tasks-button {
+#edit-tasks-button, #finalize-year-button {
     padding: 10px 20px; /* パディングを調整してボタンを大きくする */
     font-size: 1rem; /* フォントサイズを調整 */
     border: 1px solid #ccc; /* この行を追加 */
@@ -540,7 +540,7 @@ th[data-sort-key]:hover .sort-icon {
     margin-left: 10px; /* 必要に応じてマージンを調整 */
 }
 
-#edit-tasks-button:hover {
+#edit-tasks-button:hover, #finalize-year-button:hover {
     background-color: #0056b3;
 }
 
@@ -656,4 +656,17 @@ th[data-sort-key]:hover .sort-icon {
 }
 .url-header-button:hover {
     background-color: #e0e0e0;
+}
+
+/* Center align month headers in the main details table */
+.details-table th.month-header {
+    text-align: center;
+}
+
+/* Center align the first column (titles) in the notes table */
+#notes-table th:first-child,
+#notes-table td:first-child {
+    text-align: center;
+    font-weight: bold;
+    background-color: #eef2f5; /* Match header color for consistency */
 }
