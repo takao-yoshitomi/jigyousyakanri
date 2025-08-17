@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'No.': 'no',
         '事業所名': 'name',
         '決算月': 'fiscalMonth',
-        '未入力月間': 'unattendedMonths',
+        '未入力期間': 'unattendedMonths',
         '月次進捗': 'monthlyProgress',
         '担当者': '担当者',
         '経理方式': 'accountingMethod',
@@ -240,6 +240,26 @@ document.addEventListener('DOMContentLoaded', () => {
         // Calculate monthly progress for each client
         filteredClients.forEach(client => {
             client.monthlyProgress = calculateMonthlyProgress(client);
+
+            // 未入力期間の計算
+            if (client.monthlyProgress.endsWith('まで完了')) {
+                const completedMonthStr = client.monthlyProgress.replace('まで完了', ''); // "YYYY年MM月"
+                const completedYear = parseInt(completedMonthStr.substring(0, 4));
+                const completedMonth = parseInt(completedMonthStr.substring(5, 7));
+
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonth = now.getMonth() + 1; // getMonth() は 0-11
+
+                const completedTotalMonths = completedYear * 12 + completedMonth;
+                const currentTotalMonths = currentYear * 12 + currentMonth;
+
+                const diffMonths = currentTotalMonths - completedTotalMonths;
+                client.unattendedMonths = `${diffMonths}ヶ月`;
+            } else {
+                // 月次進捗が「未完了」や「データなし」の場合
+                client.unattendedMonths = '不明'; // または適切な表示
+            }
         });
 
         // Sorting logic
