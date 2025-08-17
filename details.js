@@ -5,6 +5,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const notesTableHead = document.querySelector('#notes-table thead');
     const notesTableBody = document.querySelector('#notes-table tbody');
     const yearFilter = document.getElementById('year-filter');
+    const editTasksButton = document.getElementById('edit-tasks-button');
+    const finalizeYearButton = document.getElementById('finalize-year-button');
+    const finalizedStatus = document.getElementById('finalized-status');
+
+    // --- Debounce Utility ---
+    function debounce(func, delay) {
+        let timeoutId;
+        return function(...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                func.apply(this, args);
+            }, delay);
+        };
+    }
 
     // Populate year dropdown
     const currentYear = new Date().getFullYear();
@@ -42,10 +56,29 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Ensure historicalTasks object exists for safety
+        sampleClient.historicalTasks = sampleClient.historicalTasks || {};
+
+        // Check if the current year's tasks are finalized
+        const isYearFinalized = !!sampleClient.historicalTasks[currentYearSelection];
+
+        // Update button and status visibility
+        if (isYearFinalized) {
+            finalizedStatus.textContent = `${currentYearSelection}年度の項目は確定済みです`;
+            finalizedStatus.style.display = 'inline';
+            editTasksButton.style.display = 'none';
+            finalizeYearButton.style.display = 'none';
+        } else {
+            finalizedStatus.style.display = 'none';
+            editTasksButton.style.display = 'inline-block';
+            finalizeYearButton.style.display = 'inline-block';
+        }
+
         // Normalize tasks and data structure
         sampleClient.monthlyTasks.forEach(monthData => {
             const newTasks = {};
-            sampleClient.customTasks.forEach(taskName => {
+            const tasksToUse = isYearFinalized ? sampleClient.historicalTasks[currentYearSelection] : (sampleClient.customTasks || []);
+            tasksToUse.forEach(taskName => {
                 newTasks[taskName] = monthData.tasks[taskName] || false;
             });
             monthData.tasks = newTasks;
@@ -83,15 +116,18 @@ document.addEventListener('DOMContentLoaded', () => {
         monthsToDisplay.forEach((monthStr, index) => {
             const monthHeader = document.createElement('th');
             monthHeader.textContent = monthStr;
-            monthHeader.classList.add('month-header'); // Add a class for styling and targeting
-            monthHeader.dataset.monthIndex = index; // Store index for easy lookup
-            monthHeader.addEventListener('click', onMonthHeaderClick); // Add click listener
+            monthHeader.classList.add('month-header');
+            monthHeader.dataset.monthIndex = index;
+            monthHeader.addEventListener('click', onMonthHeaderClick);
             taskHeaderRow.appendChild(monthHeader);
         });
         detailsTableHead.appendChild(taskHeaderRow);
 
         // --- Render Main Task Table Body ---
-        allTaskNames = sampleClient.customTasks || (sampleClient.monthlyTasks[0] ? Object.keys(sampleClient.monthlyTasks[0].tasks) : []);
+        allTaskNames = isYearFinalized
+            ? sampleClient.historicalTasks[currentYearSelection]
+            : (sampleClient.customTasks || []);
+
         allTaskNames.forEach(taskName => {
             const taskRow = detailsTableBody.insertRow();
             taskRow.insertCell().textContent = taskName;
@@ -128,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // --- Render Notes Table ---
-        notesTableHead.appendChild(taskHeaderRow.cloneNode(true)); // Clone header
+        notesTableHead.appendChild(taskHeaderRow.cloneNode(true));
         const urlRow = notesTableBody.insertRow();
         urlRow.insertCell().textContent = 'URL';
         const memoRow = notesTableBody.insertRow();
@@ -137,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
         monthsToDisplay.forEach(monthStr => {
             let targetMonthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr) || { url: '', memo: '' };
             
-            // URL Cell
             const urlCell = urlRow.insertCell();
             const urlInput = document.createElement('input');
             urlInput.type = 'text';
@@ -154,21 +189,32 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             urlCell.appendChild(urlInput);
 
-            // Memo Cell
             const memoCell = memoRow.insertCell();
             const memoTextarea = document.createElement('textarea');
             memoTextarea.value = targetMonthData.memo;
             memoTextarea.placeholder = 'メモを入力';
-            memoTextarea.rows = 12; // Increase height
-            memoTextarea.addEventListener('input', (e) => {
+            memoTextarea.rows = 12;
+            
+            const debouncedMemoSave = debounce((value) => {
                 let monthDataToUpdate = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
                 if (!monthDataToUpdate) {
                     monthDataToUpdate = { month: monthStr, tasks: {}, url: '', memo: '' };
                     sampleClient.monthlyTasks.push(monthDataToUpdate);
                 }
-                monthDataToUpdate.memo = e.target.value;
+                monthDataToUpdate.memo = value;
                 saveData(window.clients, window.clientDetails, window.staffs);
+
+                const originalColor = memoTextarea.style.backgroundColor;
+                memoTextarea.style.backgroundColor = '#e8f5e9';
+                setTimeout(() => {
+                    memoTextarea.style.backgroundColor = originalColor;
+                }, 500);
+            }, 1500);
+
+            memoTextarea.addEventListener('input', (e) => {
+                debouncedMemoSave(e.target.value);
             });
+
             memoCell.appendChild(memoTextarea);
         });
     }
@@ -176,6 +222,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateStatusCell(cell, monthData, taskNames) {
         if (monthData && Object.keys(monthData.tasks).length > 0) {
             const totalTasks = taskNames.length;
+            if (totalTasks === 0) { // Handle case with no tasks
+                 cell.textContent = '-';
+                 cell.style.backgroundColor = '#f0f0f0';
+                 return;
+            }
             const completedTasks = taskNames.filter(task => monthData.tasks[task]).length;
             if (totalTasks > 0 && totalTasks === completedTasks) {
                 cell.textContent = '月次完了';
@@ -205,35 +256,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function onMonthHeaderClick(event) {
         const headerCell = event.currentTarget;
-        const monthIndex = parseInt(headerCell.dataset.monthIndex); // Get the stored index
-        const monthStr = monthsToDisplay[monthIndex]; // Get the month string
+        const monthIndex = parseInt(headerCell.dataset.monthIndex);
+        const monthStr = monthsToDisplay[monthIndex];
 
-        // Find all checkboxes in this column
-        // The column index in the DOM is monthIndex + 1 because the first column is "項目"
-        const checkboxesInColumn = Array.from(detailsTableBody.querySelectorAll(`tr td:nth-child(${monthIndex + 2}) input[type="checkbox"]`)); // +2 because of "項目" and 0-based index
+        const checkboxesInColumn = Array.from(detailsTableBody.querySelectorAll(`tr td:nth-child(${monthIndex + 2}) input[type="checkbox"]`));
 
-        // Determine target state: if ANY are unchecked, we check all. Otherwise, uncheck all.
         const shouldCheckAll = checkboxesInColumn.some(cb => !cb.checked);
 
-        // Get the data object for the month
         let monthData = sampleClient.monthlyTasks.find(mt => mt.month === monthStr);
         if (!monthData) {
-            // If the user clicks a header for a month with no data, create it.
             monthData = { month: monthStr, tasks: {}, url: '', memo: '' };
             sampleClient.monthlyTasks.push(monthData);
         }
 
-        // Apply the new state to checkboxes and data model
         checkboxesInColumn.forEach((checkbox, rowIndex) => {
             checkbox.checked = shouldCheckAll;
-            const taskName = allTaskNames[rowIndex]; // allTaskNames is defined in renderDetails
-            monthData.tasks[taskName] = shouldCheckAll;
+            const taskName = allTaskNames[rowIndex];
+            if (taskName) { // Ensure taskName exists before assigning
+                monthData.tasks[taskName] = shouldCheckAll;
+            }
         });
 
-        // Update the status display for that month
-        updateMonthlyStatus(monthData, allTaskNames); // allTaskNames is defined in renderDetails
-
-        // Save all changes
+        updateMonthlyStatus(monthData, allTaskNames);
         saveData(window.clients, window.clientDetails, window.staffs);
     }
 
@@ -242,8 +286,16 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDetails();
     });
 
-    // --- Modal Logic (remains the same) ---
-    const editTasksButton = document.getElementById('edit-tasks-button');
+    finalizeYearButton.addEventListener('click', () => {
+        if (confirm(`表示中の年度（${currentYearSelection}年）のタスク項目を確定します。確定後は、この年度の項目リストの変更ができなくなります。よろしいですか？`)) {
+            sampleClient.historicalTasks = sampleClient.historicalTasks || {};
+            sampleClient.historicalTasks[currentYearSelection] = [...(sampleClient.customTasks || [])];
+            saveData(window.clients, window.clientDetails, window.staffs);
+            renderDetails();
+        }
+    });
+
+    // --- Modal Logic ---
     const taskEditModal = document.getElementById('task-edit-modal');
     const closeButton = taskEditModal.querySelector('.close-button');
     const taskListContainer = document.getElementById('task-list-container');
