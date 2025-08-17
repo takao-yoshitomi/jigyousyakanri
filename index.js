@@ -180,6 +180,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Rendering and Filtering ---
+    function calculateMonthlyProgress(client) {
+        const clientDetail = window.clientDetails.find(detail => detail.no === client.no);
+
+        if (!clientDetail || !clientDetail.monthlyTasks || clientDetail.monthlyTasks.length === 0) {
+            return 'データなし';
+        }
+
+        const allTaskNames = clientDetail.customTasks || [];
+
+        if (allTaskNames.length === 0) {
+            return 'タスク未設定';
+        }
+
+        let latestCompletedMonth = null;
+        let latestCompletedYearMonthNum = 0;
+
+        clientDetail.monthlyTasks.forEach(monthData => {
+            if (monthData && monthData.tasks) {
+                const totalTasks = allTaskNames.length;
+                const completedTasks = allTaskNames.filter(taskName => 
+                    monthData.tasks[taskName] && monthData.tasks[taskName].checked
+                ).length;
+
+                if (totalTasks > 0 && totalTasks === completedTasks) {
+                    const year = parseInt(monthData.month.substring(0, 4));
+                    const month = parseInt(monthData.month.substring(5, 7)); 
+                    const currentYearMonthNum = year * 100 + month;
+
+                    if (currentYearMonthNum > latestCompletedYearMonthNum) {
+                        latestCompletedYearMonthNum = currentYearMonthNum;
+                        latestCompletedMonth = monthData.month;
+                    }
+                }
+            }
+        });
+
+        return latestCompletedMonth ? `${latestCompletedMonth}まで完了` : '未完了';
+    }
+
     function renderClients() {
         clientsTableBody.innerHTML = '';
 
@@ -196,6 +235,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const monthMatch = monthFilterValue === '' || client.fiscalMonth === monthFilterValue;
 
             return textMatch && staffMatch && monthMatch;
+        });
+
+        // Calculate monthly progress for each client
+        filteredClients.forEach(client => {
+            client.monthlyProgress = calculateMonthlyProgress(client);
         });
 
         // Sorting logic
