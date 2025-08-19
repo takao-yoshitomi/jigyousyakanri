@@ -20,7 +20,10 @@ function initializeCustomDropdown(selectElement) {
     if (selectedOption) {
         trigger.textContent = selectedOption.textContent;
     } else if (selectElement.options.length > 0) {
-        trigger.textContent = selectElement.options[selectElement.selectedIndex].textContent;
+        // Fallback to the first option's text if no matching value is found or selectedIndex is -1
+        trigger.textContent = selectElement.options[0].textContent;
+        // Optionally, set the select element's value to the first option's value
+        // selectElement.value = selectElement.options[0].value;
     } else {
         trigger.textContent = "選択してください"; // Default text if no options
     }

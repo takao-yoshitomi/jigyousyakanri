@@ -32,7 +32,7 @@ class Staff(db.Model):
 
 class Client(db.Model):
     __tablename__ = 'clients'
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=False)
     name = db.Column(db.String(255), nullable=False)
     fiscal_month = db.Column(db.Integer, nullable=False)
     staff_id = db.Column(db.Integer, db.ForeignKey('staffs.id'), nullable=False)
@@ -90,6 +90,46 @@ def get_clients():
         print(f"Error fetching clients: {e}")
         return jsonify({"error": "Could not fetch clients"}), 500
 
+@app.route('/api/clients', methods=['POST'])
+def create_client():
+    try: # <--- New try block
+        from flask import request
+
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid data"}), 400
+
+        print(f"DEBUG: Received data for create_client: {data}") # DEBUG
+
+        required_fields = ['id', 'name', 'fiscal_month', 'staff_id', 'accounting_method', 'status']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        # Check if client ID already exists
+        existing_client = Client.query.get(data['id'])
+        if existing_client:
+            return jsonify({"error": f"Client with No. {data['id']} already exists."}), 409
+
+        new_client = Client(
+            id=data['id'], # Use the provided ID
+            name=data['name'],
+            fiscal_month=data['fiscal_month'],
+            staff_id=data['staff_id'],
+            accounting_method=data['accounting_method'],
+            status=data['status'],
+            custom_tasks=["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"]
+        )
+        print("DEBUG: Before db.session.add(new_client)") # DEBUG
+        db.session.add(new_client)
+        print("DEBUG: Before db.session.commit()") # DEBUG
+        db.session.commit()
+        print("DEBUG: After db.session.commit()") # DEBUG
+        return jsonify(new_client.to_dict()), 201
+    except Exception as e: # <--- Catch all exceptions
+        db.session.rollback() # Ensure rollback even if error before commit
+        print(f"DEBUG: Top-level error in create_client: {e}") # DEBUG
+        return jsonify({"error": "Could not create client due to an unexpected error."}), 500
+
 @app.route('/api/clients/<int:client_id>', methods=['GET'])
 def get_client_details(client_id):
     try:
@@ -101,7 +141,10 @@ def get_client_details(client_id):
             'no': client.id,
             'name': client.name,
             'fiscalMonth': f"{client.fiscal_month}月",
+            'staff_id': client.staff_id,
             '担当者': client.staff.name if client.staff else None,
+            'accounting_method': client.accounting_method,
+            'status': client.status,
             'customTasks': client.custom_tasks,
             'monthlyTasks': [task.to_dict() for task in client.monthly_tasks],
             'updated_at': client.updated_at.isoformat() if client.updated_at else None
@@ -137,19 +180,25 @@ def update_client_details(client_id):
 
     # --- Update Logic ---
     try:
+        # Update client's own fields
+        client.name = data.get('name', client.name)
+        client.fiscal_month = data.get('fiscal_month', client.fiscal_month)
+        client.staff_id = data.get('staff_id', client.staff_id)
+        client.accounting_method = data.get('accounting_method', client.accounting_method)
+        client.status = data.get('status', client.status)
+        client.custom_tasks = data.get('customTasks', client.custom_tasks)
+
+        # Update monthly tasks
         if 'monthlyTasks' in data:
             for task_data in data['monthlyTasks']:
                 task_id = task_data.get('id')
-                
                 if task_id:
-                    # Update Existing Task
                     task = MonthlyTask.query.get(task_id)
                     if task and task.client_id == client.id:
                         task.tasks = task_data.get('tasks', task.tasks)
                         task.memo = task_data.get('memo', task.memo)
                         task.url = task_data.get('url', task.url)
                 else:
-                    # Create New Task if it has any data
                     if task_data.get('tasks') or task_data.get('memo') or task_data.get('url'):
                         new_task = MonthlyTask(
                             client_id=client.id,
@@ -159,13 +208,9 @@ def update_client_details(client_id):
                             url=task_data.get('url', '')
                         )
                         db.session.add(new_task)
-
-        if 'customTasks' in data:
-            client.custom_tasks = data['customTasks']
-
-        # Touch the parent client to update its updated_at timestamp
+        
+        # Explicitly touch the client to ensure its updated_at is changed
         client.updated_at = datetime.now(timezone.utc)
-        db.session.add(client)
 
         db.session.commit()
 
@@ -175,7 +220,10 @@ def update_client_details(client_id):
             'no': updated_client.id,
             'name': updated_client.name,
             'fiscalMonth': f"{updated_client.fiscal_month}月",
+            'staff_id': updated_client.staff_id,
             '担当者': updated_client.staff.name if updated_client.staff else None,
+            'accountingMethod': updated_client.accounting_method,
+            'status': updated_client.status,
             'customTasks': updated_client.custom_tasks,
             'monthlyTasks': [task.to_dict() for task in updated_client.monthly_tasks],
             'updated_at': updated_client.updated_at.isoformat() if updated_client.updated_at else None

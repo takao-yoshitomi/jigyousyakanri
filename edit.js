@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // --- DOM Element Selectors ---
     const pageTitle = document.querySelector('h1');
     const clientNameDisplay = document.getElementById('client-name-display');
@@ -9,45 +9,75 @@ document.addEventListener('DOMContentLoaded', () => {
     const accountingMethodSelect = document.getElementById('accounting-method');
     const saveButton = document.getElementById('save-button');
 
-    // --- Mode Determination ---
+    // --- State Variables ---
+    const API_BASE_URL = 'http://localhost:5001/api';
     const urlParams = new URLSearchParams(window.location.search);
     const clientNo = urlParams.get('no') ? parseInt(urlParams.get('no')) : null;
     const isNewMode = clientNo === null;
-
     let currentClient = null;
+    let staffs = [];
 
     // --- Initialization ---
-    if (isNewMode) {
-        initializeNewMode();
-    } else {
-        initializeEditMode();
+    async function initializeApp() {
+        try {
+            staffs = await fetchStaffs();
+            if (isNewMode) {
+                await initializeNewMode();
+            } else {
+                await initializeEditMode();
+            }
+            initializeAllCustomDropdowns();
+            saveButton.addEventListener('click', saveDataHandler);
+        } catch (error) {
+            console.error("Initialization failed:", error);
+            pageTitle.textContent = 'エラー';
+            document.getElementById('edit-form').innerHTML = '<p>ページの初期化中にエラーが発生しました。</p>';
+        }
+    }
+
+    // --- Data Fetching ---
+    async function fetchStaffs() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/staffs`);
+            if (!response.ok) throw new Error('Failed to fetch staffs');
+            return await response.json();
+        } catch (error) {
+            console.error(error);
+            return [];
+        }
+    }
+
+    async function fetchClientDetails(id) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/${id}`);
+            if (!response.ok) throw new Error('Failed to fetch client details');
+            return await response.json();
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
     }
 
     // --- Mode Initializers ---
-    function initializeNewMode() {
+    async function initializeNewMode() {
         pageTitle.textContent = '顧客新規登録';
-        pageTitle.style.color = 'red'; // Set title color to red
-        clientNameDisplay.style.display = 'none'; // Hide the static name display
-
-        // Suggest the next available client number
-        const maxNo = window.clients.length > 0 ? Math.max(...window.clients.map(c => c.no)) : 100;
-        clientNoInput.value = maxNo + 1;
-
+        pageTitle.style.color = 'red';
+        clientNameDisplay.style.display = 'none';
+        clientNoInput.readOnly = false; // Allow editing for new clients
         populateDropdowns();
-        initializeAllCustomDropdowns();
     }
 
-    function initializeEditMode() {
-        currentClient = window.clients.find(client => client.no === clientNo);
+    async function initializeEditMode() {
+        currentClient = await fetchClientDetails(clientNo);
         if (currentClient) {
             pageTitle.textContent = '顧客情報編集';
             clientNameDisplay.textContent = currentClient.name;
             clientNoInput.value = currentClient.no;
+            clientNoInput.readOnly = true; // Do not allow editing of existing client No.
             clientNameInput.value = currentClient.name;
-            fiscalMonthSelect.value = currentClient.fiscalMonth;
-            accountingMethodSelect.value = currentClient.accountingMethod;
-            populateDropdowns(currentClient.担当者);
-            initializeAllCustomDropdowns();
+            fiscalMonthSelect.value = parseInt(currentClient.fiscalMonth.replace('月', ''));
+            accountingMethodSelect.value = currentClient.accounting_method;
+            populateDropdowns(currentClient.staff_id);
         } else {
             pageTitle.textContent = 'エラー';
             document.getElementById('edit-form').innerHTML = '<p>指定されたクライアントが見つかりません。</p>';
@@ -55,14 +85,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Helper Functions ---
-    function populateDropdowns(selectedStaff = '') {
-        // Staff Dropdown
-        staffSelect.innerHTML = '<option value="">選択してください</option>'; // Add a placeholder
-        window.staffs.forEach(staff => {
+    function populateDropdowns(selectedStaffId = '') {
+        staffSelect.innerHTML = '<option value="">選択してください</option>';
+        staffs.forEach(staff => {
             const option = document.createElement('option');
-            option.value = staff.name;
+            option.value = staff.no; // Use staff ID (no) as value
             option.textContent = staff.name;
-            if (selectedStaff === staff.name) {
+            if (selectedStaffId === staff.no) {
                 option.selected = true;
             }
             staffSelect.appendChild(option);
@@ -78,90 +107,77 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (select.value) {
                     trigger.textContent = select.options[select.selectedIndex].textContent;
                 } else {
-                    // Set placeholder text if no value is selected
-                    trigger.textContent = select.options[0].textContent;
+                    trigger.textContent = select.options[0]?.textContent || '選択してください';
                 }
             }
         });
     }
 
-    // --- Event Listeners ---
-    clientNoInput.addEventListener('input', () => {
-        clientNoInput.value = clientNoInput.value.replace(/[^0-9]/g, '');
-    });
-
-    saveButton.addEventListener('click', saveDataHandler);
-
     // --- Save Logic ---
-    function saveDataHandler() {
+    async function saveDataHandler() {
         // --- Validation ---
-        const newNo = parseInt(clientNoInput.value);
-        const newName = clientNameInput.value.trim();
-        const newStaff = staffSelect.value;
-        const newFiscalMonth = fiscalMonthSelect.value;
-        const newAccountingMethod = accountingMethodSelect.value;
+        const clientData = {
+            id: parseInt(clientNoInput.value),
+            name: clientNameInput.value.trim(),
+            staff_id: parseInt(staffSelect.value),
+            fiscal_month: parseInt(fiscalMonthSelect.value.replace('月', '')), // Correctly parse the integer from string
+            accounting_method: accountingMethodSelect.value,
+            status: isNewMode ? '未着手' : currentClient.status, // Default for new, keep old for existing
+        };
 
-        if (!newName || !newStaff || !newFiscalMonth || !newAccountingMethod) {
+        if (!clientData.name || !clientData.staff_id || !clientData.fiscal_month || !clientData.accounting_method) {
             alert('すべての項目を入力または選択してください。');
             return;
         }
-        if (isNaN(newNo) || newNo <= 0) {
+        if (isNaN(clientData.id) || clientData.id <= 0) {
             alert('No.は正の整数で入力してください。');
             return;
         }
 
-        // Check for unique No.
-        const isNoTaken = window.clients.some(c => c.no === newNo && (isNewMode || c.no !== currentClient.no));
-        if (isNoTaken) {
-            alert('そのNo.は既に使用されています。別のNo.を入力してください。');
-            return;
-        }
+        saveButton.disabled = true;
+        saveButton.textContent = '保存中...';
 
-        if (isNewMode) {
-            // --- Create New Client ---
-            const newClient = {
-                no: newNo,
-                name: newName,
-                fiscalMonth: newFiscalMonth,
-                unattendedMonths: 'N/A', // Default value
-                monthlyProgress: 'N/A', // Default value
-                担当者: newStaff,
-                accountingMethod: newAccountingMethod,
-                status: '未着手' // Default status
-            };
-
-            const newClientDetail = {
-                no: newNo,
-                name: newName,
-                fiscalMonth: newFiscalMonth,
-                担当者: newStaff,
-                customTasks: ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"], // Default tasks
-                monthlyTasks: [] // Initially empty
-            };
-
-            window.clients.push(newClient);
-            window.clientDetails.push(newClientDetail);
-
-        } else {
-            // --- Update Existing Client ---
-            const clientDetail = window.clientDetails.find(detail => detail.no === currentClient.no);
-            if (clientDetail) {
-                clientDetail.no = newNo;
-                clientDetail.name = newName;
-                clientDetail.担当者 = newStaff;
-                clientDetail.fiscalMonth = newFiscalMonth;
+        try {
+            let response;
+            if (isNewMode) {
+                // --- Create New Client ---
+                response = await fetch(`${API_BASE_URL}/clients`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(clientData),
+                });
+            } else {
+                // --- Update Existing Client ---
+                clientData.updated_at = currentClient.updated_at; // Add timestamp for optimistic locking
+                response = await fetch(`${API_BASE_URL}/clients/${clientNo}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(clientData),
+                });
             }
 
-            currentClient.no = newNo;
-            currentClient.name = newName;
-            currentClient.担当者 = newStaff;
-            currentClient.fiscalMonth = newFiscalMonth;
-            currentClient.accountingMethod = newAccountingMethod;
-        }
+            if (response.status === 409) {
+                alert('データが他のユーザーによって更新されました。ページをリロードします。');
+                window.location.reload();
+                return;
+            }
 
-        // --- Save and Redirect ---
-        saveData(window.clients, window.clientDetails, window.staffs);
-        alert('保存しました！');
-        window.location.href = `details.html?no=${newNo}`;
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || '保存に失敗しました。');
+            }
+
+            const savedClient = await response.json();
+            alert('保存しました！');
+            window.location.href = `details.html?no=${savedClient.no}`;
+
+        } catch (error) {
+            alert(`エラー: ${error.message}`);
+            saveButton.disabled = false;
+            saveButton.textContent = '保存';
+        }
     }
+
+    // --- Run Application ---
+    initializeApp();
 });
