@@ -90,45 +90,85 @@ def get_clients():
         print(f"Error fetching clients: {e}")
         return jsonify({"error": "Could not fetch clients"}), 500
 
+
+
 @app.route('/api/clients', methods=['POST'])
 def create_client():
-    try: # <--- New try block
-        from flask import request
-
+    from flask import request
+    try:
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid data"}), 400
 
-        print(f"DEBUG: Received data for create_client: {data}") # DEBUG
+        print(f"DEBUG: Received data for create_client: {data}")
 
         required_fields = ['id', 'name', 'fiscal_month', 'staff_id', 'accounting_method', 'status']
-        if not all(field in data for field in required_fields):
-            return jsonify({"error": "Missing required fields"}), 400
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
+
+        # Validate data types and values
+        if not isinstance(data['id'], (int, str)) or not str(data['id']).strip():
+            return jsonify({"error": "Client ID must be a non-empty value"}), 400
+        
+        if not isinstance(data['name'], str) or not data['name'].strip():
+            return jsonify({"error": "Client name must be a non-empty string"}), 400
+
+        if not isinstance(data['fiscal_month'], int) or not (1 <= data['fiscal_month'] <= 12):
+            return jsonify({"error": "Fiscal month must be an integer between 1 and 12"}), 400
 
         # Check if client ID already exists
         existing_client = Client.query.get(data['id'])
         if existing_client:
             return jsonify({"error": f"Client with No. {data['id']} already exists."}), 409
 
+        # Check if staff_id exists (if you have a Staff model)
+        # staff = Staff.query.get(data['staff_id'])
+        # if not staff:
+        #     return jsonify({"error": f"Staff with ID {data['staff_id']} not found"}), 400
+
+        # Validate accounting method
+        valid_accounting_methods = ['cash', 'accrual']  # Adjust as needed
+        if data['accounting_method'] not in valid_accounting_methods:
+            return jsonify({"error": f"Invalid accounting method. Must be one of: {', '.join(valid_accounting_methods)}"}), 400
+
+        # Validate status
+        valid_statuses = ['active', 'inactive', 'pending']  # Adjust as needed
+        if data['status'] not in valid_statuses:
+            return jsonify({"error": f"Invalid status. Must be one of: {', '.join(valid_statuses)}"}), 400
+
         new_client = Client(
-            id=data['id'], # Use the provided ID
-            name=data['name'],
+            id=data['id'],
+            name=data['name'].strip(),
             fiscal_month=data['fiscal_month'],
             staff_id=data['staff_id'],
             accounting_method=data['accounting_method'],
             status=data['status'],
             custom_tasks=["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"]
         )
-        print("DEBUG: Before db.session.add(new_client)") # DEBUG
+        
+        print("DEBUG: Before db.session.add(new_client)")
         db.session.add(new_client)
-        print("DEBUG: Before db.session.commit()") # DEBUG
+        print("DEBUG: Before db.session.commit()")
         db.session.commit()
-        print("DEBUG: After db.session.commit()") # DEBUG
+        print("DEBUG: After db.session.commit()")
+        
         return jsonify(new_client.to_dict()), 201
-    except Exception as e: # <--- Catch all exceptions
-        db.session.rollback() # Ensure rollback even if error before commit
-        print(f"DEBUG: Top-level error in create_client: {e}") # DEBUG
+
+    except IntegrityError as e:
+        db.session.rollback()
+        print(f"DEBUG: Database integrity error in create_client: {e}")
+        return jsonify({"error": "Database constraint violation. Please check your data."}), 409
+    
+    except Exception as e:
+        db.session.rollback()
+        print(f"DEBUG: Top-level error in create_client: {e}")
         return jsonify({"error": "Could not create client due to an unexpected error."}), 500
+
+
+
+
+
 
 @app.route('/api/clients/<int:client_id>', methods=['GET'])
 def get_client_details(client_id):
