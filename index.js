@@ -5,22 +5,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const staffFilter = document.getElementById('staff-filter');
     const monthFilter = document.getElementById('month-filter');
     const clientsTableHeadRow = document.querySelector('#clients-table thead tr');
-    const staffEditModal = document.getElementById('staff-edit-modal');
-    const closeStaffModalButton = staffEditModal.querySelector('.close-button');
-    const staffListContainer = document.getElementById('staff-list-container');
-    const newStaffInput = document.getElementById('new-staff-input');
-    const addStaffButton = document.getElementById('add-staff-button');
-    const saveStaffButton = document.getElementById('save-staff-button');
-    const cancelStaffButton = document.getElementById('cancel-staff-button');
-    const exportDataButton = document.getElementById('export-data-button');
-    const importDataButton = document.getElementById('import-data-button');
-    const importFileInput = document.getElementById('import-file-input');
+    // Staff modal elements are disabled for now
+    // const staffEditModal = document.getElementById('staff-edit-modal');
+    // const closeStaffModalButton = staffEditModal.querySelector('.close-button');
+    // const staffListContainer = document.getElementById('staff-list-container');
+    // const newStaffInput = document.getElementById('new-staff-input');
+    // const addStaffButton = document.getElementById('add-staff-button');
+    // const saveStaffButton = document.getElementById('save-staff-button');
+    // const cancelStaffButton = document.getElementById('cancel-staff-button');
+    
+    // Data I/O buttons are disabled for now
+    // const exportDataButton = document.getElementById('export-data-button');
+    // const importDataButton = document.getElementById('import-data-button');
+    // const importFileInput = document.getElementById('import-file-input');
 
     // --- State Variables ---
+    let clients = [];
+    let staffs = [];
     let currentSortKey = 'fiscalMonth';
     let currentSortDirection = 'asc';
-    let originalStaffsState = [];
-    let currentEditingStaffs = [];
+
+    const API_BASE_URL = 'http://localhost:5001/api';
 
     // --- Mappings ---
     const headerMap = {
@@ -30,17 +35,30 @@ document.addEventListener('DOMContentLoaded', () => {
         '未入力期間': 'unattendedMonths',
         '月次進捗': 'monthlyProgress',
         '最終更新': 'lastUpdated',
+        '担当者': '担当者',
         '経理方式': 'accountingMethod',
         '進捗ステータス': 'status'
     };
 
     // --- Initial Setup ---
-    function initializeApp() {
+    async function initializeApp() {
         setupTableHeaders();
-        populateFilters();
         addEventListeners();
-        renderClients();
-        updateSortIcons();
+        
+        try {
+            // Fetch data from backend
+            [clients, staffs] = await Promise.all([
+                fetchClients(),
+                fetchStaffs()
+            ]);
+
+            populateFilters();
+            renderClients();
+            updateSortIcons();
+        } catch (error) {
+            console.error("Error initializing app:", error);
+            alert("アプリケーションの初期化に失敗しました。");
+        }
     }
 
     function setupTableHeaders() {
@@ -67,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateFilters() {
         // Staff Filter
         staffFilter.innerHTML = '<option value="">すべての担当者</option>';
-        window.staffs.forEach(staff => {
+        staffs.forEach(staff => {
             const option = document.createElement('option');
             option.value = staff.name;
             option.textContent = staff.name;
@@ -98,127 +116,45 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sorting listener
         clientsTableHeadRow.addEventListener('click', handleSortClick);
 
-        // Button listeners
-        document.getElementById('manage-staff-button').addEventListener('click', openStaffModal);
+        // Button listeners (Staff and I/O buttons are disabled for now)
+        document.getElementById('manage-staff-button').disabled = true;
         document.getElementById('add-client-button').addEventListener('click', () => {
             window.location.href = 'edit.html';
         });
-        exportDataButton.addEventListener('click', exportData);
-        importDataButton.addEventListener('click', () => importFileInput.click());
-        importFileInput.addEventListener('change', importData);
+        document.getElementById('export-data-button').disabled = true;
+        document.getElementById('import-data-button').disabled = true;
+    }
 
-        // Staff Modal listeners
-        closeStaffModalButton.addEventListener('click', () => staffEditModal.style.display = 'none');
-        cancelStaffButton.addEventListener('click', () => staffEditModal.style.display = 'none');
-        window.addEventListener('click', (event) => {
-            if (event.target === staffEditModal) {
-                staffEditModal.style.display = 'none';
+    // --- Data Fetching Functions ---
+    async function fetchClients() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        });
-        addStaffButton.addEventListener('click', addStaff);
-        saveStaffButton.addEventListener('click', saveStaff);
-        staffListContainer.addEventListener('click', handleStaffListClick);
-        staffListContainer.addEventListener('input', handleStaffListInput);
-    }
-
-    // --- Data I/O Functions ---
-    function exportData() {
-        const dataToExport = {
-            clients: window.clients,
-            clientDetails: window.clientDetails,
-            staffs: window.staffs
-        };
-
-        const jsonString = JSON.stringify(dataToExport, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        const date = new Date();
-        const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        a.download = `jigyousyakanri-backup-${dateString}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        alert('データのエクスポートが完了しました。');
-    }
-
-    function importData(event) {
-        const file = event.target.files[0];
-        if (!file) {
-            return;
+            return await response.json();
+        } catch (error) {
+            console.error("Failed to fetch clients:", error);
+            alert("顧客情報の読み込みに失敗しました。");
+            return [];
         }
+    }
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const importedData = JSON.parse(e.target.result);
-
-                if (!importedData.clients || !importedData.clientDetails || !importedData.staffs || !Array.isArray(importedData.clients) || !Array.isArray(importedData.clientDetails) || !Array.isArray(importedData.staffs)) {
-                    throw new Error('無効なファイル形式です。');
-                }
-
-                if (confirm('ファイルをインポートすると、現在のデータはすべて上書きされます。よろしいですか？')) {
-                    window.clients = importedData.clients;
-                    window.clientDetails = importedData.clientDetails;
-                    window.staffs = importedData.staffs;
-
-                    saveData(window.clients, window.clientDetails, window.staffs);
-                    
-                    alert('データのインポートが完了しました。ページを更新します。');
-                    window.location.reload();
-                }
-            } catch (error) {
-                alert(`インポートに失敗しました: ${error.message}`);
-            } finally {
-                importFileInput.value = '';
+    async function fetchStaffs() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/staffs`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        };
-        reader.readAsText(file);
+            return await response.json();
+        } catch (error) {
+            console.error("Failed to fetch staffs:", error);
+            alert("担当者情報の読み込みに失敗しました。");
+            return [];
+        }
     }
 
     // --- Rendering and Filtering ---
-    function calculateMonthlyProgress(client) {
-        const clientDetail = window.clientDetails.find(detail => detail.no === client.no);
-
-        if (!clientDetail || !clientDetail.monthlyTasks || clientDetail.monthlyTasks.length === 0) {
-            return 'データなし';
-        }
-
-        const allTaskNames = clientDetail.customTasks || [];
-
-        if (allTaskNames.length === 0) {
-            return 'タスク未設定';
-        }
-
-        let latestCompletedMonth = null;
-        let latestCompletedYearMonthNum = 0;
-
-        clientDetail.monthlyTasks.forEach(monthData => {
-            if (monthData && monthData.tasks) {
-                const totalTasks = allTaskNames.length;
-                const completedTasks = allTaskNames.filter(taskName => 
-                    monthData.tasks[taskName] && monthData.tasks[taskName].checked
-                ).length;
-
-                if (totalTasks > 0 && totalTasks === completedTasks) {
-                    const year = parseInt(monthData.month.substring(0, 4));
-                    const month = parseInt(monthData.month.substring(5, 7)); 
-                    const currentYearMonthNum = year * 100 + month;
-
-                    if (currentYearMonthNum > latestCompletedYearMonthNum) {
-                        latestCompletedYearMonthNum = currentYearMonthNum;
-                        latestCompletedMonth = monthData.month;
-                    }
-                }
-            }
-        });
-
-        return latestCompletedMonth ? `${latestCompletedMonth}まで完了` : '未完了';
-    }
-
     function renderClients() {
         clientsTableBody.innerHTML = '';
 
@@ -226,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const staffFilterValue = staffFilter.value;
         const monthFilterValue = monthFilter.value;
 
-        let filteredClients = window.clients.filter(client => {
+        let filteredClients = clients.filter(client => {
             const nameMatch = client.name.toLowerCase().includes(textFilter);
             const staffNameMatch = client.担当者.toLowerCase().includes(textFilter);
             const textMatch = textFilter === '' || nameMatch || staffNameMatch;
@@ -235,31 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const monthMatch = monthFilterValue === '' || client.fiscalMonth === monthFilterValue;
 
             return textMatch && staffMatch && monthMatch;
-        });
-
-        // Calculate monthly progress for each client
-        filteredClients.forEach(client => {
-            client.monthlyProgress = calculateMonthlyProgress(client);
-
-            // 未入力期間の計算
-            if (client.monthlyProgress.endsWith('まで完了')) {
-                const completedMonthStr = client.monthlyProgress.replace('まで完了', ''); // "YYYY年MM月"
-                const completedYear = parseInt(completedMonthStr.substring(0, 4));
-                const completedMonth = parseInt(completedMonthStr.substring(5, 7));
-
-                const now = new Date();
-                const currentYear = now.getFullYear();
-                const currentMonth = now.getMonth() + 1; // getMonth() は 0-11
-
-                const completedTotalMonths = completedYear * 12 + completedMonth;
-                const currentTotalMonths = currentYear * 12 + currentMonth;
-
-                const diffMonths = currentTotalMonths - completedTotalMonths;
-                client.unattendedMonths = `${diffMonths}ヶ月`;
-            } else {
-                // 月次進捗が「未完了」や「データなし」の場合
-                client.unattendedMonths = '不明'; // または適切な表示
-            }
         });
 
         // Sorting logic
@@ -290,21 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.insertCell().textContent = client.fiscalMonth;
             row.insertCell().textContent = client.unattendedMonths;
             row.insertCell().textContent = client.monthlyProgress;
-            // 最終更新日時の表示
-            const clientDetail = window.clientDetails.find(detail => detail.no === client.no);
-            let lastUpdatedDisplay = '未更新';
-            if (clientDetail && clientDetail.lastUpdated) {
-                const date = new Date(clientDetail.lastUpdated);
-                if (!isNaN(date)) { // 有効な日付かチェック
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    const hours = String(date.getHours()).padStart(2, '0');
-                    const minutes = String(date.getMinutes()).padStart(2, '0');
-                    lastUpdatedDisplay = `${year}年${month}月${day}日 ${hours}:${minutes}`;
-                }
-            }
-            row.insertCell().textContent = lastUpdatedDisplay; // ここに最終更新日時を表示
+            row.insertCell().textContent = 'N/A'; // lastUpdated is not available yet
             row.insertCell().textContent = client.担当者;
             row.insertCell().textContent = client.accountingMethod;
             
@@ -349,7 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
         select.addEventListener('change', (event) => {
             client.status = event.target.value;
             updateStatusBackgroundColor(wrapper, client.status);
-            saveData(window.clients, window.clientDetails, window.staffs);
+            // TODO: Call API to save status change
+            console.log(`Status for client ${client.no} changed to ${client.status}. API call to be implemented.`);
+            // saveData(window.clients, window.clientDetails, window.staffs);
         });
 
         return wrapper;
@@ -388,82 +287,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function monthToNumber(monthStr) {
+        if (typeof monthStr !== 'string') return 0;
         return parseInt(monthStr.replace('月', ''));
-    }
-
-    // --- Staff Modal Logic ---
-    function openStaffModal() {
-        originalStaffsState = JSON.parse(JSON.stringify(window.staffs));
-        currentEditingStaffs = JSON.parse(JSON.stringify(window.staffs));
-        renderStaffList(currentEditingStaffs);
-        staffEditModal.style.display = 'block';
-    }
-
-    function renderStaffList(staffs) {
-        staffListContainer.innerHTML = '';
-        staffs.forEach(staff => {
-            const staffItem = document.createElement('div');
-            staffItem.classList.add('task-item');
-            staffItem.innerHTML = `
-                <span class="staff-no">No. ${staff.no}</span>
-                <input type="text" value="${staff.name}" data-no="${staff.no}" class="task-input">
-                <button class="delete-task-button" data-no="${staff.no}">削除</button>
-            `;
-            staffListContainer.appendChild(staffItem);
-        });
-    }
-
-    function addStaff() {
-        const newStaffName = newStaffInput.value.trim();
-        if (newStaffName && !currentEditingStaffs.some(s => s.name === newStaffName)) {
-            const newNo = currentEditingStaffs.length > 0 ? Math.max(...currentEditingStaffs.map(s => s.no)) + 1 : 1;
-            currentEditingStaffs.push({ no: newNo, name: newStaffName });
-            renderStaffList(currentEditingStaffs);
-            newStaffInput.value = '';
-        }
-    }
-
-    function saveStaff() {
-        const nameChanges = new Map();
-        currentEditingStaffs.forEach(editedStaff => {
-            const originalStaff = originalStaffsState.find(s => s.no === editedStaff.no);
-            if (originalStaff && originalStaff.name !== editedStaff.name && editedStaff.name.trim() !== '') {
-                nameChanges.set(originalStaff.name, editedStaff.name);
-            }
-        });
-
-        if (nameChanges.size > 0) {
-            window.clients.forEach(client => {
-                if (nameChanges.has(client.担当者)) {
-                    client.担当者 = nameChanges.get(client.担当者);
-                }
-            });
-        }
-
-        window.staffs = currentEditingStaffs.filter(staff => staff.name.trim() !== '');
-        saveData(window.clients, window.clientDetails, window.staffs);
-        alert('保存しました');
-        staffEditModal.style.display = 'none';
-        populateFilters(); // Repopulate filters with new staff names
-        renderClients();
-    }
-
-    function handleStaffListClick(event) {
-        if (event.target.classList.contains('delete-task-button')) {
-            const staffNoToDelete = parseInt(event.target.dataset.no);
-            currentEditingStaffs = currentEditingStaffs.filter(staff => staff.no !== staffNoToDelete);
-            renderStaffList(currentEditingStaffs);
-        }
-    }
-
-    function handleStaffListInput(event) {
-        if (event.target.classList.contains('task-input')) {
-            const staffNo = parseInt(event.target.dataset.no);
-            const staff = currentEditingStaffs.find(s => s.no === staffNo);
-            if (staff) {
-                staff.name = event.target.value.trim();
-            }
-        }
     }
 
     // --- Run Application ---

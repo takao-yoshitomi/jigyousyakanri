@@ -81,6 +81,16 @@ def get_clients():
         return jsonify({"error": "Could not fetch clients"}), 500
 
 
+@app.route('/api/staffs', methods=['GET'])
+def get_staffs():
+    try:
+        staffs = Staff.query.order_by(Staff.id).all()
+        return jsonify([{'no': s.id, 'name': s.name} for s in staffs])
+    except Exception as e:
+        print(f"Error fetching staffs: {e}")
+        return jsonify({"error": "Could not fetch staffs"}), 500
+
+
 @app.route('/')
 def hello_world():
     return 'Hello from the backend! The database is connected.'
