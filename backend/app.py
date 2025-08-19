@@ -40,9 +40,10 @@ class Client(db.Model):
     status = db.Column(db.String(255))
     custom_tasks = db.Column(db.JSON)
     monthly_tasks = db.relationship('MonthlyTask', backref='client', lazy=True, cascade="all, delete-orphan")
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
     def to_dict(self):
-        # This is a simplified representation for the client list
         return {
             'no': self.id,
             'name': self.name,
@@ -50,21 +51,22 @@ class Client(db.Model):
             '担当者': self.staff.name if self.staff else None,
             'accountingMethod': self.accounting_method,
             'status': self.status,
-            # unattendedMonths and monthlyProgress will be calculated on the fly or stored differently
-            'unattendedMonths': 'N/A',
-            'monthlyProgress': 'N/A'
+            'unattendedMonths': 'N/A', # To be calculated later
+            'monthlyProgress': 'N/A', # To be calculated later
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
-
 
 class MonthlyTask(db.Model):
     __tablename__ = 'monthly_tasks'
     id = db.Column(db.Integer, primary_key=True)
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
-    month = db.Column(db.String(255), nullable=False) # Using String for simplicity like "2025年7月"
+    month = db.Column(db.String(255), nullable=False)
     tasks = db.Column(db.JSON)
     status = db.Column(db.String(255))
     url = db.Column(db.String(255))
     memo = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
     def to_dict(self):
         return {
@@ -73,9 +75,9 @@ class MonthlyTask(db.Model):
             'tasks': self.tasks,
             'status': self.status,
             'url': self.url,
-            'memo': self.memo
+            'memo': self.memo,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
-
 
 # --- API Endpoints ---
 
@@ -85,9 +87,7 @@ def get_clients():
         clients = Client.query.join(Staff).order_by(Client.id).all()
         return jsonify([client.to_dict() for client in clients])
     except Exception as e:
-        # Log the error for debugging
         print(f"Error fetching clients: {e}")
-        # Return a generic error response
         return jsonify({"error": "Could not fetch clients"}), 500
 
 @app.route('/api/clients/<int:client_id>', methods=['GET'])
@@ -103,13 +103,89 @@ def get_client_details(client_id):
             'fiscalMonth': f"{client.fiscal_month}月",
             '担当者': client.staff.name if client.staff else None,
             'customTasks': client.custom_tasks,
-            'monthlyTasks': [task.to_dict() for task in client.monthly_tasks]
+            'monthlyTasks': [task.to_dict() for task in client.monthly_tasks],
+            'updated_at': client.updated_at.isoformat() if client.updated_at else None
         }
         return jsonify(client_details)
     except Exception as e:
         print(f"Error fetching client details: {e}")
         return jsonify({"error": "Could not fetch client details"}), 500
 
+@app.route('/api/clients/<int:client_id>', methods=['PUT'])
+def update_client_details(client_id):
+    from flask import request
+    from datetime import datetime, timezone
+
+    client = Client.query.get(client_id)
+    if not client:
+        return jsonify({"error": "Client not found"}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid data"}), 400
+
+    # --- Optimistic Locking Check ---
+    frontend_updated_at_str = data.get('updated_at')
+    if frontend_updated_at_str:
+        frontend_updated_at = datetime.fromisoformat(frontend_updated_at_str).astimezone(timezone.utc)
+        db_updated_at = client.updated_at.astimezone(timezone.utc)
+        if abs((db_updated_at - frontend_updated_at).total_seconds()) > 1:
+            return jsonify({
+                "error": "Conflict: The data has been modified by another user.",
+                "error_code": "CONFLICT"
+            }), 409
+
+    # --- Update Logic ---
+    try:
+        if 'monthlyTasks' in data:
+            for task_data in data['monthlyTasks']:
+                task_id = task_data.get('id')
+                
+                if task_id:
+                    # Update Existing Task
+                    task = MonthlyTask.query.get(task_id)
+                    if task and task.client_id == client.id:
+                        task.tasks = task_data.get('tasks', task.tasks)
+                        task.memo = task_data.get('memo', task.memo)
+                        task.url = task_data.get('url', task.url)
+                else:
+                    # Create New Task if it has any data
+                    if task_data.get('tasks') or task_data.get('memo') or task_data.get('url'):
+                        new_task = MonthlyTask(
+                            client_id=client.id,
+                            month=task_data['month'],
+                            tasks=task_data.get('tasks', {}),
+                            memo=task_data.get('memo', ''),
+                            url=task_data.get('url', '')
+                        )
+                        db.session.add(new_task)
+
+        if 'customTasks' in data:
+            client.custom_tasks = data['customTasks']
+
+        # Touch the parent client to update its updated_at timestamp
+        client.updated_at = datetime.now(timezone.utc)
+        db.session.add(client)
+
+        db.session.commit()
+
+        # Return the updated client data
+        updated_client = Client.query.get(client_id)
+        client_details = {
+            'no': updated_client.id,
+            'name': updated_client.name,
+            'fiscalMonth': f"{updated_client.fiscal_month}月",
+            '担当者': updated_client.staff.name if updated_client.staff else None,
+            'customTasks': updated_client.custom_tasks,
+            'monthlyTasks': [task.to_dict() for task in updated_client.monthly_tasks],
+            'updated_at': updated_client.updated_at.isoformat() if updated_client.updated_at else None
+        }
+        return jsonify(client_details)
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating client details: {e}")
+        return jsonify({"error": "Could not update client details"}), 500
 
 @app.route('/api/staffs', methods=['GET'])
 def get_staffs():

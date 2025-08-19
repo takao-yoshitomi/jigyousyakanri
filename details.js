@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const yearFilter = document.getElementById('year-filter');
     const editTasksButton = document.getElementById('edit-tasks-button');
     const finalizeYearButton = document.getElementById('finalize-year-button');
-    const finalizedStatus = document.getElementById('finalized-status');
+    const pageOverlay = document.createElement('div');
+    pageOverlay.className = 'page-overlay';
 
     // --- State Variables ---
     const API_BASE_URL = 'http://localhost:5001/api';
@@ -18,6 +19,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentYearSelection = new Date().getFullYear().toString();
     let monthsToDisplay = [];
     let allTaskNames = [];
+    let isSaving = false;
+    let hasConflict = false;
+
+    // --- Utility Functions ---
+    const debounce = (func, delay) => {
+        let timeoutId;
+        return (...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                func.apply(this, args);
+            }, delay);
+        };
+    };
 
     // --- Initialization ---
     async function initializeApp() {
@@ -25,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             clientInfoArea.innerHTML = '<p>エラー: クライアントNo.が指定されていません。</p>';
             return;
         }
-
+        document.body.appendChild(pageOverlay);
         setupYearFilter();
 
         try {
@@ -34,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 addEventListeners();
                 renderDetails();
             } else {
-                 clientInfoArea.innerHTML = '<p>クライアントデータが見つかりません。</p>';
+                clientInfoArea.innerHTML = '<p>クライアントデータが見つかりません。</p>';
             }
         } catch (error) {
             console.error("Initialization failed:", error);
@@ -42,33 +56,67 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Data Fetching ---
+    // --- Data I/O ---
     async function fetchClientDetails(id) {
         try {
             const response = await fetch(`${API_BASE_URL}/clients/${id}`);
             if (!response.ok) {
-                if (response.status === 404) {
-                    return null;
-                }
+                if (response.status === 404) return null;
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             return await response.json();
         } catch (error) {
             console.error("Failed to fetch client details:", error);
-            throw error; // Re-throw to be caught by the caller
+            throw error;
         }
     }
 
-    // --- UI Setup ---
+    const saveClientDetails = debounce(async () => {
+        if (hasConflict) return;
+        isSaving = true;
+        // Optional: Add a saving indicator to the UI
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/${clientNo}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(clientDetails),
+            });
+
+            if (response.status === 409) {
+                hasConflict = true;
+                pageOverlay.textContent = 'データが他のユーザーによって更新されました。ページをリロードしてください。';
+                pageOverlay.style.display = 'flex';
+                alert('データが他のユーザーによって更新されました。意図しない上書きを防ぐため、ページをリロードします。');
+                window.location.reload();
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.statusText}`);
+            }
+
+            const updatedClientDetails = await response.json();
+            // Update local data with the response from the server, including the new updated_at timestamp
+            clientDetails = updatedClientDetails;
+            console.log('Save successful!');
+
+        } catch (error) {
+            console.error('Failed to save client details:', error);
+            alert('データの保存に失敗しました。');
+        } finally {
+            isSaving = false;
+            // Optional: Remove saving indicator
+        }
+    }, 1500); // Debounce save calls by 1.5 seconds
+
+    // --- UI Setup & Rendering ---
     function setupYearFilter() {
         const currentYear = new Date().getFullYear();
         for (let year = 2025; year <= 2050; year++) {
             const option = document.createElement('option');
             option.value = year;
-            option.textContent = year + '年';
-            if (year === currentYear) { 
-                option.selected = true;
-            }
+            option.textContent = `${year}年`;
+            if (year === currentYear) option.selected = true;
             yearFilter.appendChild(option);
         }
         currentYearSelection = yearFilter.value;
@@ -78,49 +126,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     function addEventListeners() {
         yearFilter.addEventListener('change', (event) => {
             currentYearSelection = event.target.value;
-            // TODO: Persist last selected year if needed
             renderDetails();
         });
-
-        // Buttons are disabled for now as they require save functionality
+        // Edit/finalize buttons are still disabled as their logic is complex
         editTasksButton.disabled = true;
         finalizeYearButton.disabled = true;
-        // editTasksButton.addEventListener('click', ...);
-        // finalizeYearButton.addEventListener('click', ...);
     }
 
-    // --- Rendering Logic ---
     function renderDetails() {
         // Clear previous content
-        clientInfoArea.innerHTML = '';
-        detailsTableHead.innerHTML = '';
-        detailsTableBody.innerHTML = '';
-        notesTableHead.innerHTML = '';
-        notesTableBody.innerHTML = '';
+        ['client-info-area', '#details-table thead', '#details-table tbody', '#notes-table thead', '#notes-table tbody'].forEach(selector => {
+            const el = document.querySelector(selector) || document.getElementById(selector);
+            if(el) el.innerHTML = '';
+        });
 
         if (!clientDetails) return;
 
-        // For now, year finalization is disabled
-        const isYearFinalized = false; 
+        const isYearFinalized = false; // Year finalization logic is disabled for now
 
-        // Render client header info
-        const clientInfoTable = document.createElement('table');
-        clientInfoTable.className = 'client-info-table';
-        clientInfoTable.innerHTML = `<tbody>
-            <tr><th>No.</th><th>事業所名</th><th>決算月</th></tr>
-            <tr><td>${clientDetails.no}</td><td>${clientDetails.name}</td><td>${clientDetails.fiscalMonth}</td></tr>
-        </tbody>`;
-        clientInfoArea.appendChild(clientInfoTable);
+        // Render client header
+        clientInfoArea.innerHTML = `
+            <table class="client-info-table">
+                <tbody>
+                    <tr><th>No.</th><th>事業所名</th><th>決算月</th></tr>
+                    <tr><td>${clientDetails.no}</td><td>${clientDetails.name}</td><td>${clientDetails.fiscalMonth}</td></tr>
+                </tbody>
+            </table>`;
 
         // Determine months to display
         const fiscalMonthNum = parseInt(clientDetails.fiscalMonth.replace('月', ''));
-        monthsToDisplay = [];
-        for (let i = 0; i < 12; i++) {
+        monthsToDisplay = Array.from({ length: 12 }, (_, i) => {
             let month = fiscalMonthNum - i;
             let year = parseInt(currentYearSelection);
             if (month <= 0) { month += 12; year--; }
-            monthsToDisplay.unshift(`${year}年${month}月`);
-        }
+            return `${year}年${month}月`;
+        }).reverse();
 
         allTaskNames = clientDetails.customTasks || [];
 
@@ -129,12 +169,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderTaskTable(isYearFinalized) {
-        const taskHeaderRow = document.createElement('tr');
-        taskHeaderRow.appendChild(document.createElement('th')).textContent = '項目';
+        const taskHeaderRow = detailsTableHead.insertRow();
+        taskHeaderRow.insertCell().textContent = '項目';
         monthsToDisplay.forEach(monthStr => {
-            taskHeaderRow.appendChild(document.createElement('th')).textContent = monthStr;
+            taskHeaderRow.insertCell().textContent = monthStr;
         });
-        detailsTableHead.appendChild(taskHeaderRow);
 
         allTaskNames.forEach(taskName => {
             const taskRow = detailsTableBody.insertRow();
@@ -144,7 +183,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cell.className = 'task-input-cell';
 
                 let monthData = clientDetails.monthlyTasks.find(mt => mt.month === monthStr);
-                const taskChecked = monthData?.tasks?.[taskName]?.checked || false;
+                if (!monthData) {
+                    monthData = { month: monthStr, tasks: {}, url: '', memo: '' };
+                    clientDetails.monthlyTasks.push(monthData);
+                }
+                 if (!monthData.tasks[taskName]) {
+                    monthData.tasks[taskName] = { checked: false, note: '' };
+                }
+
+                const taskChecked = monthData.tasks[taskName]?.checked || false;
 
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
@@ -152,19 +199,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 checkbox.checked = taskChecked;
                 checkbox.disabled = isYearFinalized;
                 cell.appendChild(checkbox);
-                
-                if (checkbox.checked) {
-                    cell.classList.add('task-completed');
-                }
+
+                if (checkbox.checked) cell.classList.add('task-completed');
 
                 checkbox.addEventListener('change', () => {
-                    // TODO: Implement API call to save checkbox state
-                    console.log(`Checkbox for ${taskName} in ${monthStr} changed to ${checkbox.checked}`);
-                     if (checkbox.checked) {
-                        cell.classList.add('task-completed');
-                    } else {
-                        cell.classList.remove('task-completed');
-                    }
+                    if (hasConflict) return;
+                    monthData.tasks[taskName].checked = checkbox.checked;
+                    updateMonthlyStatus(monthData, allTaskNames);
+                    cell.classList.toggle('task-completed', checkbox.checked);
+                    saveClientDetails();
                 });
             });
         });
@@ -192,8 +235,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         memoRow.insertCell().textContent = 'メモ';
 
         monthsToDisplay.forEach(monthStr => {
-            let monthData = clientDetails.monthlyTasks.find(mt => mt.month === monthStr) || {};
-            
+            let monthData = clientDetails.monthlyTasks.find(mt => mt.month === monthStr);
+             if (!monthData) {
+                monthData = { month: monthStr, tasks: {}, url: '', memo: '' };
+                clientDetails.monthlyTasks.push(monthData);
+            }
+
+            // URL Cell
             const urlCell = urlRow.insertCell();
             const urlInput = document.createElement('input');
             urlInput.type = 'text';
@@ -201,11 +249,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             urlInput.placeholder = 'URLを入力';
             urlInput.disabled = isYearFinalized;
             urlInput.addEventListener('input', (e) => {
-                 // TODO: Implement API call to save URL
-                 console.log(`URL for ${monthStr} changed to ${e.target.value}`);
+                if (hasConflict) return;
+                monthData.url = e.target.value;
+                saveClientDetails();
             });
             urlCell.appendChild(urlInput);
 
+            // Memo Cell
             const memoCell = memoRow.insertCell();
             const memoTextarea = document.createElement('textarea');
             memoTextarea.value = monthData.memo || '';
@@ -213,8 +263,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             memoTextarea.rows = 12;
             memoTextarea.disabled = isYearFinalized;
             memoTextarea.addEventListener('input', (e) => {
-                // TODO: Implement API call to save memo
-                console.log(`Memo for ${monthStr} changed to ${e.target.value}`);
+                if (hasConflict) return;
+                monthData.memo = e.target.value;
+                saveClientDetails();
             });
             memoCell.appendChild(memoTextarea);
         });
@@ -229,7 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalTasks = taskNames.length;
         const completedTasks = taskNames.filter(task => monthData.tasks[task]?.checked).length;
 
-        if (totalTasks === completedTasks) {
+        if (totalTasks > 0 && totalTasks === completedTasks) {
             cell.textContent = '月次完了';
             cell.style.backgroundColor = '#ccffcc';
         } else if (completedTasks === 0) {
@@ -240,6 +291,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             cell.textContent = `${percentage}%`;
             cell.style.backgroundColor = '#ffff99';
         }
+    }
+     function updateMonthlyStatus(monthData, taskNames) {
+        const monthIndex = monthsToDisplay.findIndex(m => m === monthData.month);
+        if (monthIndex === -1) return;
+
+        const statusRow = detailsTableBody.querySelector('tr:last-child');
+        if(!statusRow) return;
+        const statusCell = statusRow.cells[monthIndex + 1];
+        updateStatusCell(statusCell, monthData, allTaskNames);
     }
 
     // --- Run Application ---
