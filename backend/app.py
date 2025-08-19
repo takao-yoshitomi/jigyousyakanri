@@ -127,15 +127,18 @@ def create_client():
         # if not staff:
         #     return jsonify({"error": f"Staff with ID {data['staff_id']} not found"}), 400
 
-        # Validate accounting method
-        valid_accounting_methods = ['cash', 'accrual']  # Adjust as needed
+   
+                # Validate accounting method
+        valid_accounting_methods = ['記帳代行', '自計']  # Adjust as needed
         if data['accounting_method'] not in valid_accounting_methods:
             return jsonify({"error": f"Invalid accounting method. Must be one of: {', '.join(valid_accounting_methods)}"}), 400
 
         # Validate status
-        valid_statuses = ['active', 'inactive', 'pending']  # Adjust as needed
+        valid_statuses = ['未着手', '依頼中', 'チェック待ち', '作業中', '完了']  # Adjust as needed
         if data['status'] not in valid_statuses:
             return jsonify({"error": f"Invalid status. Must be one of: {', '.join(valid_statuses)}"}), 400
+
+
 
         new_client = Client(
             id=data['id'],
