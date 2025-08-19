@@ -128,10 +128,78 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentYearSelection = event.target.value;
             renderDetails();
         });
-        // Edit/finalize buttons are still disabled as their logic is complex
-        editTasksButton.disabled = true;
+
+        // Enable Edit Tasks button
+        editTasksButton.disabled = false;
+        editTasksButton.addEventListener('click', openTaskEditModal);
+
+        // Finalize Year button is still disabled
         finalizeYearButton.disabled = true;
     }
+
+    // --- Modal Logic ---
+    const taskEditModal = document.getElementById('task-edit-modal');
+    const closeButton = taskEditModal.querySelector('.close-button');
+    const taskListContainer = document.getElementById('task-list-container');
+    const newTaskInput = document.getElementById('new-task-input');
+    const addTaskButton = document.getElementById('add-task-button');
+    const saveTasksButton = document.getElementById('save-tasks-button');
+    const cancelTasksButton = document.getElementById('cancel-tasks-button');
+    let currentEditingTasks = [];
+
+    function openTaskEditModal() {
+        currentEditingTasks = [...(clientDetails.customTasks || [])];
+        renderTaskList(currentEditingTasks);
+        taskEditModal.style.display = 'block';
+    }
+
+    function renderTaskList(tasks) {
+        taskListContainer.innerHTML = '';
+        tasks.forEach((task, index) => {
+            const taskItem = document.createElement('div');
+            taskItem.classList.add('task-item');
+            taskItem.innerHTML = `
+                <input type="text" value="${task}" data-index="${index}">
+                <button class="delete-task-button" data-index="${index}">削除</button>
+            `;
+            taskListContainer.appendChild(taskItem);
+        });
+    }
+
+    addTaskButton.addEventListener('click', () => {
+        const newTaskName = newTaskInput.value.trim();
+        if (newTaskName && !currentEditingTasks.includes(newTaskName)) {
+            currentEditingTasks.push(newTaskName);
+            renderTaskList(currentEditingTasks);
+            newTaskInput.value = '';
+        }
+    });
+
+    taskListContainer.addEventListener('click', (event) => {
+        if (event.target.classList.contains('delete-task-button')) {
+            const index = parseInt(event.target.dataset.index);
+            currentEditingTasks.splice(index, 1);
+            renderTaskList(currentEditingTasks);
+        }
+    });
+
+    taskListContainer.addEventListener('input', (event) => {
+        if (event.target.tagName === 'INPUT') {
+            const index = parseInt(event.target.dataset.index);
+            currentEditingTasks[index] = event.target.value.trim();
+        }
+    });
+
+    saveTasksButton.addEventListener('click', () => {
+        clientDetails.customTasks = currentEditingTasks.filter(task => task !== '');
+        saveClientDetails(); // Save to backend
+        taskEditModal.style.display = 'none';
+        renderDetails(); // Re-render to update table headers
+    });
+
+    closeButton.addEventListener('click', () => { taskEditModal.style.display = 'none'; });
+    cancelTasksButton.addEventListener('click', () => { taskEditModal.style.display = 'none'; });
+    window.addEventListener('click', (event) => { if (event.target === taskEditModal) { taskEditModal.style.display = 'none'; } });
 
     function renderDetails() {
         // Clear previous content
