@@ -66,6 +66,16 @@ class MonthlyTask(db.Model):
     url = db.Column(db.String(255))
     memo = db.Column(db.Text)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'month': self.month,
+            'tasks': self.tasks,
+            'status': self.status,
+            'url': self.url,
+            'memo': self.memo
+        }
+
 
 # --- API Endpoints ---
 
@@ -79,6 +89,26 @@ def get_clients():
         print(f"Error fetching clients: {e}")
         # Return a generic error response
         return jsonify({"error": "Could not fetch clients"}), 500
+
+@app.route('/api/clients/<int:client_id>', methods=['GET'])
+def get_client_details(client_id):
+    try:
+        client = Client.query.get(client_id)
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
+        
+        client_details = {
+            'no': client.id,
+            'name': client.name,
+            'fiscalMonth': f"{client.fiscal_month}月",
+            '担当者': client.staff.name if client.staff else None,
+            'customTasks': client.custom_tasks,
+            'monthlyTasks': [task.to_dict() for task in client.monthly_tasks]
+        }
+        return jsonify(client_details)
+    except Exception as e:
+        print(f"Error fetching client details: {e}")
+        return jsonify({"error": "Could not fetch client details"}), 500
 
 
 @app.route('/api/staffs', methods=['GET'])
