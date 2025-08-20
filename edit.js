@@ -136,7 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 fiscalMonth: newFiscalMonth,
                 担当者: newStaff,
                 customTasks: ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"], // Default tasks
-                monthlyTasks: [] // Initially empty
+                monthlyTasks: [], // Initially empty
+                lastUpdated: new Date().toISOString() // Add last updated timestamp
             };
 
             window.clients.push(newClient);
@@ -150,6 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 clientDetail.name = newName;
                 clientDetail.担当者 = newStaff;
                 clientDetail.fiscalMonth = newFiscalMonth;
+                clientDetail.lastUpdated = new Date().toISOString(); // Update last updated timestamp
             }
 
             currentClient.no = newNo;
@@ -162,6 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Save and Redirect ---
         saveData(window.clients, window.clientDetails, window.staffs);
         alert('保存しました！');
-        window.location.href = `details.html?no=${newNo}`;
+        window.location.href = 'index.html'; // Redirect to the main list page
     }
 });
