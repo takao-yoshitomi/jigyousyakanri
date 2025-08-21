@@ -134,7 +134,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         editTasksButton.addEventListener('click', openTaskEditModal);
 
         // Finalize Year button is still disabled
-        finalizeYearButton.disabled = true;
+        // finalizeYearButton.disabled = true;
+        finalizeYearButton.addEventListener('click', () => {
+            alert('「この年度の項目を確定」機能は現在開発中です。');
+            // TODO: Implement year finalization logic
+        });
     }
 
     // --- Modal Logic ---
@@ -148,7 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentEditingTasks = [];
 
     function openTaskEditModal() {
-        currentEditingTasks = [...(clientDetails.customTasks || [])];
+        currentEditingTasks = [...(clientDetails.custom_tasks || [])];
         renderTaskList(currentEditingTasks);
         taskEditModal.style.display = 'block';
     }
@@ -191,7 +195,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     saveTasksButton.addEventListener('click', () => {
-        clientDetails.customTasks = currentEditingTasks.filter(task => task !== '');
+        clientDetails.custom_tasks = currentEditingTasks.filter(task => task !== '');
         saveClientDetails(); // Save to backend
         taskEditModal.style.display = 'none';
         renderDetails(); // Re-render to update table headers
@@ -217,12 +221,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             <table class="client-info-table">
                 <tbody>
                     <tr><th>No.</th><th>事業所名</th><th>決算月</th></tr>
-                    <tr><td>${clientDetails.no}</td><td>${clientDetails.name}</td><td>${clientDetails.fiscalMonth}</td></tr>
+                    <tr><td>${clientDetails.id}</td><td>${clientDetails.name}</td><td>${clientDetails.fiscal_month}月</td></tr>
                 </tbody>
             </table>`;
 
         // Determine months to display
-        const fiscalMonthNum = parseInt(clientDetails.fiscalMonth.replace('月', ''));
+        const fiscalMonthNum = clientDetails.fiscal_month;
         monthsToDisplay = Array.from({ length: 12 }, (_, i) => {
             let month = fiscalMonthNum - i;
             let year = parseInt(currentYearSelection);
@@ -230,7 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `${year}年${month}月`;
         }).reverse();
 
-        allTaskNames = clientDetails.customTasks || [];
+        allTaskNames = clientDetails.custom_tasks || [];
 
         renderTaskTable(isYearFinalized);
         renderNotesTable(isYearFinalized);
@@ -250,10 +254,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const cell = taskRow.insertCell();
                 cell.className = 'task-input-cell';
 
-                let monthData = clientDetails.monthlyTasks.find(mt => mt.month === monthStr);
+                let monthData = clientDetails.monthly_tasks.find(mt => mt.month === monthStr);
                 if (!monthData) {
                     monthData = { month: monthStr, tasks: {}, url: '', memo: '' };
-                    clientDetails.monthlyTasks.push(monthData);
+                    clientDetails.monthly_tasks.push(monthData);
                 }
                  if (!monthData.tasks[taskName]) {
                     monthData.tasks[taskName] = { checked: false, note: '' };
@@ -285,7 +289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         monthsToDisplay.forEach(monthStr => {
             const statusCell = statusRow.insertCell();
             statusCell.className = 'monthly-status';
-            const targetMonthData = clientDetails.monthlyTasks.find(mt => mt.month === monthStr);
+            const targetMonthData = clientDetails.monthly_tasks.find(mt => mt.month === monthStr);
             updateStatusCell(statusCell, targetMonthData, allTaskNames);
         });
     }
@@ -303,10 +307,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         memoRow.insertCell().textContent = 'メモ';
 
         monthsToDisplay.forEach(monthStr => {
-            let monthData = clientDetails.monthlyTasks.find(mt => mt.month === monthStr);
+            let monthData = clientDetails.monthly_tasks.find(mt => mt.month === monthStr);
              if (!monthData) {
                 monthData = { month: monthStr, tasks: {}, url: '', memo: '' };
-                clientDetails.monthlyTasks.push(monthData);
+                clientDetails.monthly_tasks.push(monthData);
             }
 
             // URL Cell

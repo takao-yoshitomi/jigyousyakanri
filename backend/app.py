@@ -2,6 +2,7 @@ import os
 import json
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm.attributes import flag_modified
 from flask_cors import CORS
 import click
 
@@ -45,11 +46,11 @@ class Client(db.Model):
 
     def to_dict(self):
         return {
-            'no': self.id,
+            'id': self.id,
             'name': self.name,
-            'fiscalMonth': f"{self.fiscal_month}月",
-            '担当者': self.staff.name if self.staff else None,
-            'accountingMethod': self.accounting_method,
+            'fiscal_month': self.fiscal_month,
+            'staff_name': self.staff.name if self.staff else None,
+            'accounting_method': self.accounting_method,
             'status': self.status,
             'unattendedMonths': 'N/A', # To be calculated later
             'monthlyProgress': 'N/A', # To be calculated later
@@ -102,7 +103,7 @@ def create_client():
 
         print(f"DEBUG: Received data for create_client: {data}")
 
-        required_fields = ['id', 'name', 'fiscal_month', 'staff_id', 'accounting_method', 'status']
+        required_fields = ['id', 'name', 'fiscal_month', 'staff_id', 'accounting_method']
         missing_fields = [field for field in required_fields if field not in data]
         if missing_fields:
             return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
@@ -133,12 +134,11 @@ def create_client():
         if data['accounting_method'] not in valid_accounting_methods:
             return jsonify({"error": f"Invalid accounting method. Must be one of: {', '.join(valid_accounting_methods)}"}), 400
 
-        # Validate status
-        valid_statuses = ['未着手', '依頼中', 'チェック待ち', '作業中', '完了']  # Adjust as needed
-        if data['status'] not in valid_statuses:
+        # statusは任意とし、指定がなければデフォルト値を設定
+        status = data.get('status', '未着手')
+        valid_statuses = ['未着手', '依頼中', 'チェック待ち', '作業中', '完了']
+        if status not in valid_statuses:
             return jsonify({"error": f"Invalid status. Must be one of: {', '.join(valid_statuses)}"}), 400
-
-
 
         new_client = Client(
             id=data['id'],
@@ -146,7 +146,7 @@ def create_client():
             fiscal_month=data['fiscal_month'],
             staff_id=data['staff_id'],
             accounting_method=data['accounting_method'],
-            status=data['status'],
+            status=status, # ここで設定
             custom_tasks=["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"]
         )
         
@@ -181,15 +181,13 @@ def get_client_details(client_id):
             return jsonify({"error": "Client not found"}), 404
         
         client_details = {
-            'no': client.id,
+            'id': client.id,
             'name': client.name,
-            'fiscalMonth': f"{client.fiscal_month}月",
+            'fiscal_month': client.fiscal_month,
             'staff_id': client.staff_id,
-            '担当者': client.staff.name if client.staff else None,
             'accounting_method': client.accounting_method,
-            'status': client.status,
-            'customTasks': client.custom_tasks,
-            'monthlyTasks': [task.to_dict() for task in client.monthly_tasks],
+            'custom_tasks': client.custom_tasks,
+            'monthly_tasks': [task.to_dict() for task in client.monthly_tasks],
             'updated_at': client.updated_at.isoformat() if client.updated_at else None
         }
         return jsonify(client_details)
@@ -229,16 +227,18 @@ def update_client_details(client_id):
         client.staff_id = data.get('staff_id', client.staff_id)
         client.accounting_method = data.get('accounting_method', client.accounting_method)
         client.status = data.get('status', client.status)
-        client.custom_tasks = data.get('customTasks', client.custom_tasks)
+        client.custom_tasks = data.get('custom_tasks', client.custom_tasks)
+        flag_modified(client, "custom_tasks")
 
         # Update monthly tasks
-        if 'monthlyTasks' in data:
-            for task_data in data['monthlyTasks']:
+        if 'monthly_tasks' in data:
+            for task_data in data['monthly_tasks']:
                 task_id = task_data.get('id')
                 if task_id:
                     task = MonthlyTask.query.get(task_id)
                     if task and task.client_id == client.id:
                         task.tasks = task_data.get('tasks', task.tasks)
+                        flag_modified(task, "tasks")
                         task.memo = task_data.get('memo', task.memo)
                         task.url = task_data.get('url', task.url)
                 else:
@@ -257,35 +257,99 @@ def update_client_details(client_id):
 
         db.session.commit()
 
-        # Return the updated client data
+        # Return the updated client data using the same format as get_client_details
         updated_client = Client.query.get(client_id)
-        client_details = {
-            'no': updated_client.id,
-            'name': updated_client.name,
-            'fiscalMonth': f"{updated_client.fiscal_month}月",
-            'staff_id': updated_client.staff_id,
-            '担当者': updated_client.staff.name if updated_client.staff else None,
-            'accountingMethod': updated_client.accounting_method,
-            'status': updated_client.status,
-            'customTasks': updated_client.custom_tasks,
-            'monthlyTasks': [task.to_dict() for task in updated_client.monthly_tasks],
-            'updated_at': updated_client.updated_at.isoformat() if updated_client.updated_at else None
-        }
-        return jsonify(client_details)
+        return get_client_details(client_id)
 
     except Exception as e:
         db.session.rollback()
         print(f"Error updating client details: {e}")
         return jsonify({"error": "Could not update client details"}), 500
 
+def staff_to_dict(staff):
+    """Converts a Staff object to a dictionary."""
+    return {'id': staff.id, 'name': staff.name}
+
 @app.route('/api/staffs', methods=['GET'])
 def get_staffs():
     try:
         staffs = Staff.query.order_by(Staff.id).all()
-        return jsonify([{'no': s.id, 'name': s.name} for s in staffs])
+        return jsonify([staff_to_dict(s) for s in staffs])
     except Exception as e:
         print(f"Error fetching staffs: {e}")
         return jsonify({"error": "Could not fetch staffs"}), 500
+
+
+@app.route('/api/staffs', methods=['POST'])
+def create_staff():
+    from flask import request
+    data = request.get_json()
+    if not data or not 'name' in data or not data['name'].strip():
+        return jsonify({"error": "Staff name cannot be empty"}), 400
+
+    new_name = data['name'].strip()
+
+    # Check if staff name already exists
+    if Staff.query.filter_by(name=new_name).first():
+        return jsonify({"error": "Staff with this name already exists"}), 409
+
+    try:
+        new_staff = Staff(name=new_name)
+        db.session.add(new_staff)
+        db.session.commit()
+        return jsonify(staff_to_dict(new_staff)), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creating staff: {e}")
+        return jsonify({"error": "Could not create staff"}), 500
+
+
+@app.route('/api/staffs/<int:staff_id>', methods=['DELETE'])
+def delete_staff(staff_id):
+    staff = Staff.query.get(staff_id)
+    if not staff:
+        return jsonify({"error": "Staff not found"}), 404
+
+    # Optional: Check if the staff is associated with any clients
+    if staff.clients:
+        return jsonify({"error": "Cannot delete staff associated with clients"}), 409
+
+    try:
+        db.session.delete(staff)
+        db.session.commit()
+        return jsonify({"message": "Staff deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting staff: {e}")
+        return jsonify({"error": "Could not delete staff"}), 500
+
+
+@app.route('/api/staffs/<int:staff_id>', methods=['PUT'])
+def update_staff(staff_id):
+    from flask import request
+    staff = Staff.query.get(staff_id)
+    if not staff:
+        return jsonify({"error": "Staff not found"}), 404
+
+    data = request.get_json()
+    if not data or not 'name' in data or not data['name'].strip():
+        return jsonify({"error": "Staff name cannot be empty"}), 400
+
+    new_name = data['name'].strip()
+
+    # Check if the new name is already taken by another staff member
+    existing_staff = Staff.query.filter(Staff.id != staff_id, Staff.name == new_name).first()
+    if existing_staff:
+        return jsonify({"error": "Staff with this name already exists"}), 409
+
+    try:
+        staff.name = new_name
+        db.session.commit()
+        return jsonify(staff_to_dict(staff)), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating staff: {e}")
+        return jsonify({"error": "Could not update staff"}), 500
 
 
 @app.route('/')
@@ -311,42 +375,42 @@ def init_db_command():
             staff_map[name] = staff.id
 
         initial_clients_data = [
-            { "no": 101, "name": "株式会社アルファ", "fiscalMonth": "1月", "担当者": "佐藤", "accountingMethod": "記帳代行" , "status": "完了" },
-            { "no": 103, "name": "合同会社ベータ", "fiscalMonth": "1月", "担当者": "鈴木", "accountingMethod": "自計" , "status": "完了" },
-            { "no": 201, "name": "株式会社ガンマ", "fiscalMonth": "2月", "担当者": "高橋", "accountingMethod": "自計" , "status": "完了" },
-            { "no": 301, "name": "有限会社デルタ", "fiscalMonth": "3月", "担当者": "田中", "accountingMethod": "記帳代行" , "status": "2チェック待ち" },
-            { "no": 308, "name": "株式会社イプシロン", "fiscalMonth": "3月", "担当者": "渡辺", "accountingMethod": "記帳代行" , "status": "依頼中" },
-            {"no":400,"name":"サンプル会社400","fiscalMonth":"1月","担当者":"佐藤","accountingMethod":"記帳代行","status":"未着手"},
-            {"no":401,"name":"サンプル会社401","fiscalMonth":"2月","担当者":"鈴木","accountingMethod":"記帳代行","status":"未着手"},
-            {"no":402,"name":"サンプル会社402","fiscalMonth":"3月","担当者":"高橋","accountingMethod":"記帳代行","status":"未着手"},
+            { "no": 101, "name": "株式会社アルファ", "fiscal_month": "1月", "担当者": "佐藤", "accounting_method": "記帳代行" , "status": "完了" },
+            { "no": 103, "name": "合同会社ベータ", "fiscal_month": "1月", "担当者": "鈴木", "accounting_method": "自計" , "status": "完了" },
+            { "no": 201, "name": "株式会社ガンマ", "fiscal_month": "2月", "担当者": "高橋", "accounting_method": "自計" , "status": "完了" },
+            { "no": 301, "name": "有限会社デルタ", "fiscal_month": "3月", "担当者": "田中", "accounting_method": "記帳代行" , "status": "2チェック待ち" },
+            { "no": 308, "name": "株式会社イプシロン", "fiscal_month": "3月", "担当者": "渡辺", "accounting_method": "記帳代行" , "status": "依頼中" },
+            {"no":400,"name":"サンプル会社400","fiscal_month":"1月","担当者":"佐藤","accounting_method":"記帳代行","status":"未着手"},
+            {"no":401,"name":"サンプル会社401","fiscal_month":"2月","担当者":"鈴木","accounting_method":"記帳代行","status":"未着手"},
+            {"no":402,"name":"サンプル会社402","fiscal_month":"3月","担当者":"高橋","accounting_method":"記帳代行","status":"未着手"},
         ]
 
         initial_client_details_data = [
             {
-                "no": 101, "name": "株式会社アルファ", "fiscalMonth": "1月","担当者": "佐藤",
-                "customTasks": ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"],
-                "monthlyTasks": [
+                "no": 101, "name": "株式会社アルファ", "fiscal_month": "1月","担当者": "佐藤",
+                "custom_tasks": ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"],
+                "monthly_tasks": [
                     { "month": "2025年7月", "tasks": { "受付": True, "入力": True, "会計チェック": True, "担当者解決": True, "不明点": True, "試算表作成": True, "代表報告": True, "仕分け確認": True, "先生ロック": True }, "status": "月次完了", "url": "", "memo": "" },
                     { "month": "2025年8月", "tasks": { "受付": True, "入力": True, "会計チェック": True, "担当者解決": True, "不明点": True, "試算表作成": True, "代表報告": True, "仕分け確認": True, "先生ロック": True }, "status": "月次完了", "url": "", "memo": "" }
                 ]
             },
             {
-                "no": 103, "name": "合同会社ベータ", "fiscalMonth": "1月","担当者": "鈴木",
-                "customTasks": ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"],
-                "monthlyTasks": [
+                "no": 103, "name": "合同会社ベータ", "fiscal_month": "1月","担当者": "鈴木",
+                "custom_tasks": ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"],
+                "monthly_tasks": [
                     { "month": "2025年7月", "tasks": { "受付": False, "入力": False, "会計チェック": False, "担当者解決": False, "不明点": False, "試算表作成": False, "代表報告": False, "仕分け確認": False, "先生ロック": False }, "status": "未入力", "url": "", "memo": "" },
                 ]
             },
         ]
 
         for client_data in initial_clients_data:
-            fiscal_month_int = int(client_data["fiscalMonth"].replace('月',''))
+            fiscal_month_int = int(client_data["fiscal_month"].replace('月',''))
             client = Client(
                 id=client_data["no"],
                 name=client_data["name"],
                 fiscal_month=fiscal_month_int,
                 staff_id=staff_map[client_data["担当者"]],
-                accounting_method=client_data["accountingMethod"],
+                accounting_method=client_data["accounting_method"],
                 status=client_data["status"],
                 custom_tasks=[] # Will be populated from details
             )
@@ -355,8 +419,8 @@ def init_db_command():
         for detail_data in initial_client_details_data:
             client = Client.query.get(detail_data["no"])
             if client:
-                client.custom_tasks = detail_data.get("customTasks", [])
-                for task_data in detail_data.get("monthlyTasks", []):
+                client.custom_tasks = detail_data.get("custom_tasks", [])
+                for task_data in detail_data.get("monthly_tasks", []):
                     monthly_task = MonthlyTask(
                         client_id=client.id,
                         month=task_data["month"],
