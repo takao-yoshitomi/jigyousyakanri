@@ -231,9 +231,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderTaskAndMemoTable(isYearFinalized) {
         const taskHeaderRow = detailsTableHead.insertRow();
-        taskHeaderRow.insertCell().textContent = '項目';
+        const firstHeader = document.createElement('th');
+        firstHeader.textContent = '項目';
+        taskHeaderRow.appendChild(firstHeader);
+
         monthsToDisplay.forEach(monthStr => {
-            taskHeaderRow.insertCell().textContent = monthStr;
+            const th = document.createElement('th');
+            th.textContent = monthStr;
+            th.classList.add('month-header');
+            taskHeaderRow.appendChild(th);
         });
 
         allTaskNames.forEach(taskName => {
@@ -291,9 +297,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderUrlAndMemoTable(isYearFinalized) {
         const notesHeaderRow = notesTableHead.insertRow();
-        notesHeaderRow.insertCell().textContent = '項目';
+        const firstHeader = document.createElement('th');
+        firstHeader.textContent = '項目';
+        notesHeaderRow.appendChild(firstHeader);
+
         monthsToDisplay.forEach(monthStr => {
-            notesHeaderRow.insertCell().textContent = monthStr;
+            const th = document.createElement('th');
+            th.textContent = monthStr;
+            th.classList.add('month-header');
+            notesHeaderRow.appendChild(th);
         });
 
         const urlRow = notesTableBody.insertRow();

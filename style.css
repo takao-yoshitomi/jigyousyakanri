@@ -174,9 +174,13 @@ tr:hover {
     font-size: inherit;
 }
 
+#notes-table input[type="text"] {
+    min-height: 40px; /* Set a minimum height for the URL row */
+}
+
 #notes-table textarea {
     resize: vertical; /* Allow vertical resize only */
-    min-height: 150px;
+    min-height: 180px; /* Increased height */
 }
 
 .details-table th.month-header {
