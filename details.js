@@ -32,6 +32,101 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveChangesButton.disabled = !isDirty;
     }
 
+    // --- Task Inheritance Logic ---
+    function inheritFromPreviousYear(targetYear) {
+        if (!clientDetails.custom_tasks_by_year) return [];
+        
+        const targetYearNum = parseInt(targetYear);
+        let tasksToInherit = [];
+        
+        // Look for the most recent previous year with tasks
+        for (let year = targetYearNum - 1; year >= targetYearNum - 10; year--) {
+            const yearStr = year.toString();
+            if (clientDetails.custom_tasks_by_year[yearStr] && 
+                clientDetails.custom_tasks_by_year[yearStr].length > 0) {
+                tasksToInherit = clientDetails.custom_tasks_by_year[yearStr];
+                console.log(`Inheriting tasks from ${yearStr} to ${targetYear}:`, tasksToInherit);
+                break;
+            }
+        }
+        
+        return tasksToInherit;
+    }
+
+    function propagateTasksToFutureYears(fromYear, newTasks) {
+        if (!clientDetails.custom_tasks_by_year || !clientDetails.finalized_years) return;
+        
+        const fromYearNum = parseInt(fromYear);
+        const currentYear = new Date().getFullYear();
+        const endYear = Math.max(currentYear + 10, fromYearNum + 10); // Look ahead 10 years or more
+        
+        let propagatedCount = 0;
+        
+        // Propagate to future years that are not finalized
+        for (let year = fromYearNum + 1; year <= endYear; year++) {
+            const yearStr = year.toString();
+            
+            // Skip if year is finalized
+            if (clientDetails.finalized_years.includes(yearStr)) {
+                continue;
+            }
+            
+            // Only update years that already have tasks (were previously set)
+            if (clientDetails.custom_tasks_by_year[yearStr]) {
+                clientDetails.custom_tasks_by_year[yearStr] = [...newTasks];
+                propagatedCount++;
+            }
+        }
+        
+        if (propagatedCount > 0) {
+            console.log(`Propagated tasks from ${fromYear} to ${propagatedCount} future years`);
+            showNotification(`項目変更を${propagatedCount}つの未来年度にも適用しました`, 'info');
+        }
+    }
+
+    // --- Notification System ---
+    function showNotification(message, type = 'info') {
+        // Create or reuse notification element
+        let notification = document.getElementById('task-notification');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'task-notification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 16px;
+                border-radius: 4px;
+                color: white;
+                font-weight: bold;
+                z-index: 1000;
+                max-width: 300px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            `;
+            document.body.appendChild(notification);
+        }
+
+        // Set color based on type
+        const colors = {
+            info: '#2196F3',
+            success: '#4CAF50',
+            warning: '#FF9800',
+            error: '#f44336'
+        };
+        notification.style.backgroundColor = colors[type] || colors.info;
+        notification.textContent = message;
+
+        // Show notification
+        notification.style.transform = 'translateX(0)';
+
+        // Hide after 3 seconds
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+        }, 3000);
+    }
+
     // --- Initialization ---
     async function initializeApp() {
         if (!clientNo) {
@@ -248,8 +343,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!clientDetails.custom_tasks_by_year) {
             clientDetails.custom_tasks_by_year = {};
         }
+        
+        const newTasks = currentEditingTasks.filter(task => task !== '');
+        
         // Save tasks for current year
-        clientDetails.custom_tasks_by_year[currentYearSelection] = currentEditingTasks.filter(task => task !== '');
+        clientDetails.custom_tasks_by_year[currentYearSelection] = [...newTasks];
+        
+        // Propagate changes to future unfinalized years
+        propagateTasksToFutureYears(currentYearSelection, newTasks);
+        
         setUnsavedChanges(true);
         taskEditModal.style.display = 'none';
         renderDetails();
@@ -286,8 +388,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `${year}年${month}月`;
         }).reverse();
 
-        // Get custom tasks for current year
-        allTaskNames = (clientDetails.custom_tasks_by_year && clientDetails.custom_tasks_by_year[currentYearSelection]) || [];
+        // Get custom tasks for current year, with automatic inheritance
+        if (!clientDetails.custom_tasks_by_year) {
+            clientDetails.custom_tasks_by_year = {};
+        }
+        
+        // Auto-inherit from previous year if current year has no tasks
+        if (!clientDetails.custom_tasks_by_year[currentYearSelection]) {
+            const previousYearTasks = inheritFromPreviousYear(currentYearSelection);
+            if (previousYearTasks.length > 0) {
+                clientDetails.custom_tasks_by_year[currentYearSelection] = [...previousYearTasks];
+                setUnsavedChanges(true); // Mark as needing save
+                
+                // Show user notification about inheritance
+                showNotification(`${currentYearSelection}年度の項目を前年度から自動継承しました`, 'info');
+            }
+        }
+        
+        allTaskNames = clientDetails.custom_tasks_by_year[currentYearSelection] || [];
 
         // Update finalize button text and state
         finalizeYearButton.textContent = isYearFinalized ? 
