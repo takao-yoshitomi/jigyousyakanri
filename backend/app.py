@@ -4,6 +4,7 @@ from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.exc import IntegrityError
 from flask_cors import CORS
 from datetime import datetime, timezone
 import click
@@ -150,7 +151,8 @@ def create_client():
             staff_id=data['staff_id'],
             accounting_method=data['accounting_method'],
             status=status, # ここで設定
-            custom_tasks=["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"]
+            custom_tasks_by_year={},
+            finalized_years=[]
         )
         
         print("DEBUG: Before db.session.add(new_client)")
@@ -190,9 +192,10 @@ def get_client_details(client_id):
             'staff_id': client.staff_id,
             'status': client.status,
             'accounting_method': client.accounting_method,
-            'custom_tasks': client.custom_tasks,
+            'custom_tasks_by_year': client.custom_tasks_by_year,
+            'finalized_years': client.finalized_years,
             'monthly_tasks': [task.to_dict() for task in client.monthly_tasks],
-            'updated_at': client.updated_at.isoformat() if client.updated_at else None
+            'updated_at': client.updated_at.astimezone(timezone.utc).isoformat() if client.updated_at else None
         }
         return jsonify(client_details)
     except Exception as e:
@@ -231,8 +234,10 @@ def update_client_details(client_id):
         client.staff_id = data.get('staff_id', client.staff_id)
         client.accounting_method = data.get('accounting_method', client.accounting_method)
         client.status = data.get('status', client.status)
-        client.custom_tasks = data.get('custom_tasks', client.custom_tasks)
-        flag_modified(client, "custom_tasks")
+        client.custom_tasks_by_year = data.get('custom_tasks_by_year', client.custom_tasks_by_year)
+        flag_modified(client, "custom_tasks_by_year")
+        client.finalized_years = data.get('finalized_years', client.finalized_years)
+        flag_modified(client, "finalized_years")
 
         # Update monthly tasks
         if 'monthly_tasks' in data:
@@ -416,14 +421,18 @@ def init_db_command():
                 staff_id=staff_map[client_data["担当者"]],
                 accounting_method=client_data["accounting_method"],
                 status=client_data["status"],
-                custom_tasks=[] # Will be populated from details
+                custom_tasks_by_year={},
+                finalized_years=[]
             )
             db.session.add(client)
 
         for detail_data in initial_client_details_data:
             client = Client.query.get(detail_data["no"])
             if client:
-                client.custom_tasks = detail_data.get("custom_tasks", [])
+                current_year = str(datetime.now().year)
+                custom_tasks = detail_data.get("custom_tasks", [])
+                client.custom_tasks_by_year = {current_year: custom_tasks} if custom_tasks else {}
+                client.finalized_years = []
                 for task_data in detail_data.get("monthly_tasks", []):
                     monthly_task = MonthlyTask(
                         client_id=client.id,
