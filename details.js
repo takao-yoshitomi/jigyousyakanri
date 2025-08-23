@@ -328,6 +328,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         const memoRow = notesTableBody.insertRow();
+        memoRow.classList.add('memo-row');
         memoRow.insertCell().textContent = 'メモ';
 
         monthsToDisplay.forEach(monthStr => {

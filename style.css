@@ -198,13 +198,13 @@ tr:hover {
     left: 0;
     background-color: #eef2f5; /* Match header background */
     z-index: 11; /* Ensure it's above other cells when scrolling */
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1); /* Subtle shadow for separation */
+    box-shadow: 2px 0 5px rgba(202, 51, 51, 0.1); /* Subtle shadow for separation */
 }
 .details-table tr:nth-child(even) .sticky-col {
-    background-color: #f9f9f9; /* Match even row background */
+    background-color: #f1efef; /* Match even row background */
 }
 .details-table tr:hover .sticky-col {
-    background-color: #f1f1f1; /* Match hover row background */
+    background-color: #dadada; /* Match hover row background */
 }
 
 .details-table .task-input-cell {
@@ -720,4 +720,10 @@ button:hover {
 button:active {
     transform: translateY(0); /* 押下時に元に戻る */
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); /* シャドウを弱める */
+}
+
+/* Override background color for the memo row in the notes table */
+#notes-table .memo-row,
+#notes-table .memo-row:hover {
+    background-color: #ffffff !important;
 }
