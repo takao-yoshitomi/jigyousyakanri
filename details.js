@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const memoTextarea = document.createElement('textarea');
                 memoTextarea.className = 'task-memo';
                 memoTextarea.value = taskData.note || '';
-                memoTextarea.placeholder = 'タスクメモ...';
+                //memoTextarea.placeholder = 'タスクメモ...';
                 memoTextarea.rows = 1;
                 memoTextarea.disabled = isYearFinalized;
                 cell.appendChild(memoTextarea);
@@ -349,7 +349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const urlInput = document.createElement('input');
             urlInput.type = 'text';
             urlInput.value = monthData.url || '';
-            urlInput.placeholder = 'URLを入力';
+            //urlInput.placeholder = 'URLを入力';
             urlInput.disabled = isYearFinalized;
             urlInput.addEventListener('input', (e) => {
                 if (hasConflict) return;
@@ -367,7 +367,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const memoCell = memoRow.insertCell();
             const memoTextarea = document.createElement('textarea');
             memoTextarea.value = monthData.memo || '';
-            memoTextarea.placeholder = '月次のメモを入力';
+           // memoTextarea.placeholder = '月次のメモを入力';
             memoTextarea.rows = 4;
             memoTextarea.disabled = isYearFinalized;
             memoTextarea.addEventListener('input', (e) => {
