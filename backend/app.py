@@ -2,23 +2,23 @@ import os
 import json
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from sqlalchemy.orm.attributes import flag_modified
 from flask_cors import CORS
+from datetime import datetime, timezone
 import click
 
 app = Flask(__name__)
 CORS(app)
 
 # --- Database Configuration ---
-# Get the database URL from the environment variable
 DATABASE_URL = os.environ.get('DATABASE_URL')
-if not DATABASE_URL:
-    raise ValueError("No DATABASE_URL set for Flask application")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # --- Database Models ---
 
@@ -39,7 +39,8 @@ class Client(db.Model):
     staff_id = db.Column(db.Integer, db.ForeignKey('staffs.id'), nullable=False)
     accounting_method = db.Column(db.String(255))
     status = db.Column(db.String(255))
-    custom_tasks = db.Column(db.JSON)
+    custom_tasks_by_year = db.Column(db.JSON, default={})
+    finalized_years = db.Column(db.JSON, default=[])
     monthly_tasks = db.relationship('MonthlyTask', backref='client', lazy=True, cascade="all, delete-orphan")
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
@@ -54,7 +55,9 @@ class Client(db.Model):
             'status': self.status,
             'unattendedMonths': 'N/A', # To be calculated later
             'monthlyProgress': 'N/A', # To be calculated later
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.astimezone(timezone.utc).isoformat() if self.updated_at else None,
+            'custom_tasks_by_year': self.custom_tasks_by_year,
+            'finalized_years': self.finalized_years
         }
 
 class MonthlyTask(db.Model):

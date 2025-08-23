@@ -1,0 +1,275 @@
+
+  目標:
+
+  詳細画面の「この年度の項目を確定」ボタンをクリックすると、その年度のタスク項目とデータが
+  ロックされ編集不可になる。再度クリックするとロックが解除される。また、将来の年度で項目を
+  追加・削除しても、過去の確定済み年度の項目リストには影響を与えない。
+
+  使用ツール:
+
+   * Python (Flask, SQLAlchemy, Flask-Migrate): バックエンドロジック、データベース操作
+   * PostgreSQL: データベース
+   * Docker/Docker Compose: バックエンドとデータベースの環境管理
+   * JavaScript (Vanilla JS): フロントエンドロジック、UI操作
+   * HTML/CSS: UI構造、スタイリング
+   * Git: バージョン管理、ブランチ操作
+
+  ---
+
+  フェーズ1: バックエンド - データベーススキーマ変更とマイグレーション
+
+  目的: Clientモデルを修正し、custom_tasksを年度ごとに保存できるようにし、確定済み年度を追
+  跡する。
+
+
+  ステップ1.1: フィーチャーブランチの作成
+   * 目的: この複雑な機能の変更を分離する。
+   * アクション: git checkout -b feature/finalize-year
+
+  ステップ1.2: Flask-Migrateのインストール
+   * 目的: データベーススキーマの変更を管理する。
+   * アクション:
+       1. backend/requirements.txtにFlask-Migrateを追加:
+
+   1         Flask
+   2         Flask-Cors
+   3         psycopg2-binary
+   4         Flask-SQLAlchemy
+   5         Flask-Migrate # この行を追加
+       2. 依存関係をインストール: pip install -r backend/requirements.txt
+          (プロジェクトルートで実行)
+
+  ステップ1.3: `app.py`へのFlask-Migrateの統合
+   * 目的: FlaskアプリとSQLAlchemyのDBオブジェクトをFlask-Migrateに接続する。
+   * アクション: backend/app.pyを修正。
+       1. インポートを追加: from flask_migrate import Migrate
+       2. Migrateを初期化: migrate = Migrate(app, db) (db = SQLAlchemy(app)の後)
+       3. updated_atのUTC変換のためにfrom datetime import datetime, timezoneを追加。
+       4. 重要: DATABASE_URLのValueErrorチェックを削除（Docker Composeが設定するため）。
+   * コード例 (`app.py`の変更箇所):
+
+    1     # ... 既存のインポート ...
+    2     from flask_migrate import Migrate # 追加
+    3     from datetime import datetime, timezone # 追加
+    4
+    5     app = Flask(__name__)
+    6     CORS(app)
+    7
+    8     # --- Database Configuration ---
+    9     DATABASE_URL = os.environ.get('DATABASE_URL')
+   10     # このブロックを削除:
+   11     # if not DATABASE_URL:
+   12     #     raise ValueError("No DATABASE_URL set for Flask application")
+   13
+   14     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+   15     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+   16
+   17     db = SQLAlchemy(app)
+   18     migrate = Migrate(app, db) # 追加
+
+  ステップ1.4: `app.py`の`Client`モデルの修正
+   * 目的: custom_tasksを年度ごとの辞書形式に変更し、finalized_yearsカラムを追加する。
+   * アクション: backend/app.pyを修正。
+       * custom_tasksカラムを削除。
+       * custom_tasks_by_yearカラムを追加（デフォルト値{}）。
+       * finalized_yearsカラムを追加（デフォルト値[]）。
+       * to_dictメソッドを更新し、新しいカラムを返すようにし、updated_atがUTCであることを保証
+         する。
+   * コード例 (`Client`モデルの変更箇所):
+
+    1     class Client(db.Model):
+    2         __tablename__ = 'clients'
+    3         # ... 既存のカラム ...
+    4         # custom_tasks = db.Column(db.JSON) # この行を削除
+    5         custom_tasks_by_year = db.Column(db.JSON, default={}) #
+      この行を追加/置き換え
+    6         finalized_years = db.Column(db.JSON, default=[]) # この行を追加
+    7         # ... 既存のリレーションシップとタイムスタンプ ...
+    8
+    9         def to_dict(self):
+   10             return {
+   11                 # ... 既存のフィールド ...
+   12                 'updated_at': self
+      .updated_at.astimezone(timezone.utc).isoformat() if self.updated_at else None, #
+      この行を修正
+   13                 'custom_tasks_by_year': self.custom_tasks_by_year, #
+      この行を追加
+   14                 'finalized_years': self.finalized_years # この行を追加
+   15             }
+
+  ステップ1.5: Flask-Migrateディレクトリの初期化
+   * 目的: ホストマシン上にmigrationsフォルダ構造を作成する。
+   * アクション:
+       1. Docker Composeサービスが実行中であることを確認: docker-compose up -d
+       2. マイグレーションを初期化: docker-compose exec web flask db init
+       3. 生成されたmigrationsフォルダをコンテナからホストにコピー:
+           * if not exist migrations mkdir migrations
+           * if not exist migrations\versions mkdir migrations\versions
+           * docker cp jigyousyakanri-web-1:/app/migrations/versions/<生成されたハッシュ>_add
+             _yearly_custom_tasks_and_finalized_.py migrations/versions/<生成されたハッシュ>_
+             add_yearly_custom_tasks_and_finalized_.py (実際のハッシュに置き換える)
+
+  ステップ1.6: マイグレーションスクリプトの生成
+   * 目的: スキーマ変更を適用するためのスクリプトを作成する。
+   * アクション: docker-compose exec web flask db migrate -m "Add yearly custom tasks and
+     finalized years"
+   * 注意: これにより、migrations/versions/に新しいマイグレーションファイルが生成されます。
+
+  ステップ1.7: マイグレーションスクリプトの編集（重要なデータ移行ロジック）
+   * 目的: 既存のcustom_tasksデータをcustom_tasks_by_yearに移行するロジックを追加する。
+   * アクション: 生成されたマイグレーションファイルを開く（例:
+     migrations/versions/<生成されたハッシュ>_add_yearly_custom_tasks_and_finalized_.py）。
+       * `upgrade()`関数内:
+           * custom_tasks_by_yearとfinalized_yearsのop.add_columnを追加（Alembicが自動生成す
+             る可能性あり）。
+           * op.drop_column('clients',
+             'custom_tasks')を追加（Alembicが自動生成する可能性あり）。
+           * データ移行ロジックを追加:
+             これが最も複雑な部分です。既存のClientレコードをループし、古いcustom_tasksの値を
+             読み取り、現在の年度のキーを持つcustom_tasks_by_year辞書に格納する。
+
+    1             # マイグレーションファイルの先頭にこれらのインポートを追加
+    2             from sqlalchemy.sql import table, column
+    3             from sqlalchemy import String, Integer, JSON
+    4             import json
+    5             from datetime import datetime
+    6             from sqlalchemy.orm import sessionmaker # 追加
+    7
+    8             def upgrade():
+    9                 # ... (custom_tasks_by_yearとfinalized_yearsのop.add_column) ...
+   10                 # ... (custom_tasksのop.drop_column) ...
+   11
+   12                 # ### カスタムデータ移行の開始 ###
+   13                 bind = op.get_bind()
+   14                 Session = sessionmaker(bind=bind)
+   15                 session = Session()
+   16
+   17                 # 古いClientテーブルの一時的な表現を定義
+   18                 class OldClient(object):
+   19                     pass
+   20                 # mapperはSQLAlchemy
+      1.xの機能。2.xでは非推奨だが、マイグレーションでは必要になる場合がある
+   21                 # もしエラーが出る場合は、SQLAlchemy
+      2.xの推奨される方法（ORMを使わず直接SQLを実行）に切り替える
+   22                 from sqlalchemy.orm import mapper # 追加
+   23                 mapper(OldClient, table('clients',
+   24                                         column('id', Integer, primary_key=True),
+   25                                         column('custom_tasks', JSON))) #
+      古いカラム名を参照
+   26
+   27                 current_year = str(datetime.now().year)
+   28
+   29                 for client in session.query(OldClient).all():
+   30                     if client.custom_tasks is not None:
+   31                         # 古いリストを新しい年度インデックス付き辞書に変換
+   32                         new_custom_tasks_by_year = {current_year:
+      client.custom_tasks}
+   33                         session.execute(
+   34                             sa.text("UPDATE clients SET custom_tasks_by_year =
+      :new_tasks_by_year WHERE id = :client_id"),
+   35                             {"new_tasks_by_year":
+      json.dumps(new_custom_tasks_by_year), "client_id": client.id}
+   36                         )
+   37                     # 既存のクライアントのfinalized_yearsを空のリストで初期化
+   38                     session.execute(
+   39                         sa.text("UPDATE clients SET finalized_years =
+      :finalized_years WHERE id = :client_id"),
+   40                         {"finalized_years": json.dumps([]), "client_id": client.
+      id}
+   41                     )
+   42                 session.commit()
+   43                 # ### カスタムデータ移行の終了 ###
+       * `downgrade()`関数内:
+           * op.add_column('clients', sa.Column('custom_tasks', sa.JSON(), nullable=True))
+           * op.drop_column('clients', 'custom_tasks_by_year')
+           * op.drop_column('clients', 'finalized_years')
+           * データロールバックロジック（任意だが推奨）:
+             custom_tasks_by_yearをcustom_tasksに戻す。
+
+  ステップ1.8: マイグレーションの適用
+   * 目的: データベースにスキーマ変更とデータ移行を適用する。
+   * アクション: docker-compose exec web flask db upgrade
+
+  ---
+
+  フェーズ2: バックエンド - APIの適応
+
+  目的: 新しいcustom_tasks_by_yearとfinalized_yearsカラムを使用するようにAPIエンドポイント
+  を更新する。
+
+  ステップ2.1: `app.py`の`create_client()`の更新
+   * 目的: 新しいクライアントのために新しいカラムを初期化する。
+   * アクション: backend/app.pyを修正。
+   1     new_client = Client(
+   2         # ... 既存のフィールド ...
+   3         # custom_tasks=[] # この行を削除
+   4         custom_tasks_by_year={}, # この行を追加
+   5         finalized_years=[], # この行を追加
+   6     )
+
+  ステップ2.2: `app.py`の`get_client_details()`の更新
+   * 目的: 新しいカラムを返す。
+   * アクション: backend/app.pyを修正。
+
+   1     client_details = {
+   2         # ... 既存のフィールド ...
+   3         'custom_tasks_by_year': client.custom_tasks_by_year, # この行を追加
+   4         'finalized_years': client.finalized_years, # この行を追加
+   5         # ...
+   6     }
+
+  ステップ2.3: `app.py`の`update_client_details()`の更新
+   * 目的: 新しいカラムを受け入れて更新する。
+   * アクション: backend/app.pyを修正。
+
+   1     # ... 既存の更新 ...
+   2     client.custom_tasks_by_year = data.get('custom_tasks_by_year',
+     client.custom_tasks_by_year) # この行を追加
+   3     flag_modified(client, "custom_tasks_by_year") # この行を追加
+   4     client.finalized_years = data.get('finalized_years', client.finalized_years)
+     # この行を追加
+   5     flag_modified(client, "finalized_years") # この行を追加
+   6     # 削除: client.custom_tasks = data.get('custom_tasks', client.custom_tasks)
+   7     # 削除: flag_modified(client, "custom_tasks")
+
+  ---
+
+  フェーズ3: フロントエンド - `details.js`の適応
+
+  目的: UIを年度固有のタスクリストに対応させ、「この年度の項目を確定」ボタンのロジックを実
+  装する。
+
+
+  ステップ3.1: `details.js`の状態変数の更新
+   * 目的: finalized_yearsとcustom_tasks_by_yearを保存する。
+   * アクション:
+       * let clientDetails = null; はcustom_tasks_by_yearとfinalized_yearsを含むようになる。
+       * allTaskNames = clientDetails.custom_tasks || [];
+         をcurrentYearSelectionのタスクを取得するように更新する。
+
+  ステップ3.2: 「項目の変更」モーダルロジックの修正
+   * 目的: モーダルがcurrentYearSelectionのcustom_tasksを編集するようにする。
+   * アクション:
+       * openTaskEditModal()内で、currentEditingTasks = [...(clientDetails.custom_tasks ||
+         [])]; を currentEditingTasks =
+         [...(clientDetails.custom_tasks_by_year[currentYearSelection] || [])]; に変更。
+       * saveTasksButton.addEventListener()内で、clientDetails.custom_tasks = ... を
+         clientDetails.custom_tasks_by_year[currentYearSelection] = ... に変更。
+
+  ステップ3.3: 「この年度の項目を確定」ボタンロジックの実装
+   * 目的: 年度をロックし、finalized_yearsを更新する。
+   * アクション:
+       * finalizeYearButton.addEventListener('click', ...) を追加。
+       * ハンドラは以下を行う:
+           1. currentYearSelectionを取得。
+           2. clientDetails.finalized_years内でcurrentYearSelectionをトグルする。
+           3. performSave()を呼び出す。
+           4. renderDetails()を再描画してUIを更新する。
+
+  ステップ3.4: 確定済み年度のUI無効化の実装
+   * 目的: 確定済み年度の入力フィールドを無効にする。
+   * アクション:
+       * renderTaskAndMemoTableとrenderUrlAndMemoTable内で、currentYearSelectionがclientDetai
+         ls.finalized_yearsに含まれているかチェックする。
+       * 含まれている場合、チェックボックス、テキストエリア、入力フィールドをdisabled =
+         trueに設定する。
