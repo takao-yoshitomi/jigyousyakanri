@@ -204,15 +204,28 @@ tr:hover {
 }
 
 .details-table .task-input-cell {
-    padding: 0 !important;
-    vertical-align: middle;
+    padding: 5px;
+    vertical-align: top;
 }
 
 /* Checkbox styling */
 .task-checkbox {
-    float: left;
+    display: block;
+    margin: 0 auto 5px auto; /* Center checkbox and add space below */
     transform: scale(1.2);
-    margin: 9px; /* Adjust margin for vertical alignment and spacing */
+}
+
+/* Per-task memo textarea styling */
+.task-memo {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #e0e0e080;
+    border-radius: 3px;
+    padding: 5px;
+    font-family: inherit;
+    font-size: 12px; /* Smaller font size */
+    resize: vertical;
 }
 
 .task-note-input {
