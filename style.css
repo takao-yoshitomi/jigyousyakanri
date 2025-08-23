@@ -687,9 +687,9 @@ th[data-sort-key]:hover .sort-icon {
     font-weight: bold;
     background-color: #eef2f5; /* Match header color for consistency */
 }
-
+/*チェックボックスを押した際に色が変化する*/
 .task-completed {
-    background-color: #f0f0f0; /* 薄いグレー */
+    background-color: #75b3e652; /* 薄いグレー */
 }
 
 .sticky-header-area {
