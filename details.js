@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const yearFilter = document.getElementById('year-filter');
     const editTasksButton = document.getElementById('edit-tasks-button');
     const finalizeYearButton = document.getElementById('finalize-year-button');
+    const saveStatus = document.getElementById('save-status');
     const pageOverlay = document.createElement('div');
     pageOverlay.className = 'page-overlay';
 
@@ -21,6 +22,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let allTaskNames = [];
     let isSaving = false;
     let hasConflict = false;
+    let hasUnsavedChanges = false; // Dirty flag for unsaved changes
+    let saveStatusTimeout;
 
     // --- Utility Functions ---
     const debounce = (func, delay) => {
@@ -56,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Data I/O ---
+    // --- Data I/O & Save Logic ---
     async function fetchClientDetails(id) {
         try {
             const response = await fetch(`${API_BASE_URL}/clients/${id}`);
@@ -72,8 +75,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const saveClientDetails = debounce(async () => {
-        if (hasConflict) return;
+        if (hasConflict || !hasUnsavedChanges) return;
         isSaving = true;
+        showSaveStatus('saving');
+
         try {
             const response = await fetch(`${API_BASE_URL}/clients/${clientNo}`, {
                 method: 'PUT',
@@ -97,15 +102,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const updatedClientDetails = await response.json();
             clientDetails = updatedClientDetails;
-            console.log('Save successful!');
+            hasUnsavedChanges = false; // Reset dirty flag on successful save
+            showSaveStatus('success');
 
         } catch (error) {
             console.error('Failed to save client details:', error);
-            alert('データの保存に失敗しました。');
+            showSaveStatus('error');
         } finally {
             isSaving = false;
         }
-    }, 1500);
+    }, 500); // <-- Debounce delay reduced to 500ms
+
+    function showSaveStatus(status) {
+        clearTimeout(saveStatusTimeout);
+        saveStatus.classList.remove('success', 'error');
+
+        switch (status) {
+            case 'saving':
+                saveStatus.textContent = '保存中...';
+                break;
+            case 'success':
+                saveStatus.textContent = 'すべての変更が保存されました';
+                saveStatus.classList.add('success');
+                break;
+            case 'error':
+                saveStatus.textContent = '保存に失敗しました';
+                saveStatus.classList.add('error');
+                break;
+        }
+
+        saveStatus.classList.add('visible');
+
+        // Hide status after a delay, except for errors
+        if (status === 'success') {
+            saveStatusTimeout = setTimeout(() => {
+                saveStatus.classList.remove('visible');
+            }, 3000);
+        }
+    }
 
     // --- UI Setup & Rendering ---
     function setupYearFilter() {
@@ -131,9 +165,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         finalizeYearButton.addEventListener('click', () => {
             alert('「この年度の項目を確定」機能は現在開発中です。');
         });
+
+        // Warn user before leaving if there are unsaved changes
+        window.addEventListener('beforeunload', (e) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = ''; // Required for legacy browsers
+            }
+        });
     }
 
-    // --- Modal Logic ---
+    // --- Modal Logic (with unsaved changes flag) ---
     const taskEditModal = document.getElementById('task-edit-modal');
     const closeButton = taskEditModal.querySelector('.close-button');
     const taskListContainer = document.getElementById('task-list-container');
@@ -167,7 +209,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (newTaskName && !currentEditingTasks.includes(newTaskName)) {
             currentEditingTasks.push(newTaskName);
             renderTaskList(currentEditingTasks);
-            newTaskInput.value = '';
         }
     });
 
@@ -187,6 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     saveTasksButton.addEventListener('click', () => {
+        hasUnsavedChanges = true;
         clientDetails.custom_tasks = currentEditingTasks.filter(task => task !== '');
         saveClientDetails();
         taskEditModal.style.display = 'none';
@@ -205,7 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!clientDetails) return;
 
-        const isYearFinalized = false; // Year finalization logic is disabled for now
+        const isYearFinalized = false;
 
         clientInfoArea.innerHTML = `
             <table class="client-info-table">
@@ -226,7 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         allTaskNames = clientDetails.custom_tasks || [];
 
         renderTaskAndMemoTable(isYearFinalized);
-        renderUrlAndMemoTable(isYearFinalized); // Render the separate URL and Memo table
+        renderUrlAndMemoTable(isYearFinalized);
     }
 
     function renderTaskAndMemoTable(isYearFinalized) {
@@ -234,7 +276,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const firstHeader = document.createElement('th');
         firstHeader.textContent = '項目';
         taskHeaderRow.appendChild(firstHeader);
-
         monthsToDisplay.forEach(monthStr => {
             const th = document.createElement('th');
             th.textContent = monthStr;
@@ -262,7 +303,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const memoTextarea = document.createElement('textarea');
                 memoTextarea.className = 'task-memo';
                 memoTextarea.value = taskData.note || '';
-                //memoTextarea.placeholder = 'タスクメモ...';
+                memoTextarea.placeholder = 'タスクメモ...';
                 memoTextarea.rows = 1;
                 memoTextarea.disabled = isYearFinalized;
                 cell.appendChild(memoTextarea);
@@ -271,6 +312,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 checkbox.addEventListener('change', () => {
                     if (hasConflict) return;
+                    hasUnsavedChanges = true;
                     taskData.checked = checkbox.checked;
                     updateMonthlyStatus(monthData, allTaskNames);
                     cell.classList.toggle('task-completed', checkbox.checked);
@@ -279,6 +321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 memoTextarea.addEventListener('input', (e) => {
                     if (hasConflict) return;
+                    hasUnsavedChanges = true;
                     taskData.note = e.target.value;
                     saveClientDetails();
                 });
@@ -300,7 +343,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const firstHeader = document.createElement('th');
         firstHeader.textContent = '項目';
         notesHeaderRow.appendChild(firstHeader);
-
         monthsToDisplay.forEach(monthStr => {
             const th = document.createElement('th');
             th.textContent = monthStr;
@@ -310,17 +352,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const urlRow = notesTableBody.insertRow();
         urlRow.insertCell().textContent = 'URL';
-
         monthsToDisplay.forEach(monthStr => {
             const monthData = findOrCreateMonthlyTask(clientDetails, monthStr);
             const urlCell = urlRow.insertCell();
             const urlInput = document.createElement('input');
             urlInput.type = 'text';
             urlInput.value = monthData.url || '';
-            //urlInput.placeholder = 'URLを入力';
+            urlInput.placeholder = 'URLを入力';
             urlInput.disabled = isYearFinalized;
             urlInput.addEventListener('input', (e) => {
                 if (hasConflict) return;
+                hasUnsavedChanges = true;
                 monthData.url = e.target.value;
                 saveClientDetails();
             });
@@ -330,17 +372,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const memoRow = notesTableBody.insertRow();
         memoRow.classList.add('memo-row');
         memoRow.insertCell().textContent = 'メモ';
-
         monthsToDisplay.forEach(monthStr => {
             const monthData = findOrCreateMonthlyTask(clientDetails, monthStr);
             const memoCell = memoRow.insertCell();
             const memoTextarea = document.createElement('textarea');
             memoTextarea.value = monthData.memo || '';
-            //memoTextarea.placeholder = 'メモ';
+            memoTextarea.placeholder = '月次のメモを入力';
             memoTextarea.rows = 4;
             memoTextarea.disabled = isYearFinalized;
             memoTextarea.addEventListener('input', (e) => {
                 if (hasConflict) return;
+                hasUnsavedChanges = true;
                 monthData.memo = e.target.value;
                 saveClientDetails();
             });
