@@ -365,6 +365,199 @@ def update_staff(staff_id):
 def hello_world():
     return 'Hello from the backend! The database is connected.'
 
+# --- Custom Tasks Management API ---
+@app.route('/api/clients/<int:client_id>/custom-tasks/<year>', methods=['PUT'])
+def update_custom_tasks_for_year(client_id, year):
+    from flask import request
+    from datetime import datetime, timezone
+    
+    client = Client.query.get(client_id)
+    if not client:
+        return jsonify({"error": "Client not found"}), 404
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid data"}), 400
+    
+    try:
+        # Initialize custom_tasks_by_year if it doesn't exist
+        if not client.custom_tasks_by_year:
+            client.custom_tasks_by_year = {}
+        
+        # Update tasks for the specific year
+        custom_tasks = data.get('custom_tasks', [])
+        client.custom_tasks_by_year[year] = custom_tasks
+        flag_modified(client, "custom_tasks_by_year")
+        
+        # Update timestamp
+        client.updated_at = datetime.now(timezone.utc)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Custom tasks updated successfully",
+            "year": year,
+            "custom_tasks": custom_tasks
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating custom tasks: {e}")
+        return jsonify({"error": "Could not update custom tasks"}), 500
+
+@app.route('/api/clients/<int:client_id>/custom-tasks/sync-check', methods=['POST'])
+def sync_check_custom_tasks(client_id):
+    from flask import request
+    
+    client = Client.query.get(client_id)
+    if not client:
+        return jsonify({"error": "Client not found"}), 404
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid data"}), 400
+    
+    frontend_tasks_by_year = data.get('custom_tasks_by_year', {})
+    db_tasks_by_year = client.custom_tasks_by_year or {}
+    
+    mismatches = []
+    
+    # Check for differences between frontend and DB
+    all_years = set(frontend_tasks_by_year.keys()) | set(db_tasks_by_year.keys())
+    
+    for year in all_years:
+        frontend_tasks = set(frontend_tasks_by_year.get(year, []))
+        db_tasks = set(db_tasks_by_year.get(year, []))
+        
+        if frontend_tasks != db_tasks:
+            mismatches.append({
+                "year": year,
+                "frontend_tasks": list(frontend_tasks),
+                "db_tasks": list(db_tasks),
+                "missing_in_frontend": list(db_tasks - frontend_tasks),
+                "missing_in_db": list(frontend_tasks - db_tasks)
+            })
+    
+    return jsonify({
+        "is_synced": len(mismatches) == 0,
+        "mismatches": mismatches,
+        "db_tasks_by_year": db_tasks_by_year
+    })
+
+@app.route('/api/clients/<int:client_id>/cleanup-deleted-tasks', methods=['POST'])
+def cleanup_deleted_tasks(client_id):
+    from flask import request
+    from datetime import datetime, timezone
+    
+    client = Client.query.get(client_id)
+    if not client:
+        return jsonify({"error": "Client not found"}), 404
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid data"}), 400
+    
+    try:
+        year = data.get('year')
+        deleted_tasks = data.get('deleted_tasks', [])
+        
+        if not year or not deleted_tasks:
+            return jsonify({"error": "Year and deleted_tasks are required"}), 400
+        
+        cleaned_count = 0
+        
+        # Remove deleted tasks from all monthly_tasks for this client
+        monthly_tasks = MonthlyTask.query.filter_by(client_id=client_id).all()
+        
+        for monthly_task in monthly_tasks:
+            if monthly_task.tasks:
+                original_tasks = monthly_task.tasks.copy()
+                for deleted_task in deleted_tasks:
+                    if deleted_task in monthly_task.tasks:
+                        del monthly_task.tasks[deleted_task]
+                        cleaned_count += 1
+                
+                # Mark the field as modified if changes were made
+                if original_tasks != monthly_task.tasks:
+                    flag_modified(monthly_task, "tasks")
+        
+        # Update timestamp
+        client.updated_at = datetime.now(timezone.utc)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": f"Cleaned up {cleaned_count} deleted task references",
+            "deleted_tasks": deleted_tasks,
+            "year": year
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error cleaning up deleted tasks: {e}")
+        return jsonify({"error": "Could not cleanup deleted tasks"}), 500
+
+@app.route('/api/clients/<int:client_id>/propagate-tasks', methods=['POST'])
+def propagate_tasks_to_future_years(client_id):
+    from flask import request
+    from datetime import datetime, timezone
+    
+    client = Client.query.get(client_id)
+    if not client:
+        return jsonify({"error": "Client not found"}), 404
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid data"}), 400
+    
+    try:
+        source_year = data.get('source_year')
+        target_years = data.get('target_years', [])
+        
+        if not source_year:
+            return jsonify({"error": "Source year is required"}), 400
+        
+        if not client.custom_tasks_by_year:
+            client.custom_tasks_by_year = {}
+        
+        source_tasks = client.custom_tasks_by_year.get(source_year, [])
+        
+        if not source_tasks:
+            return jsonify({"error": "No tasks found for source year"}), 400
+        
+        finalized_years = client.finalized_years or []
+        propagated_to = []
+        
+        # If target_years not specified, propagate to all future unfinalized years
+        if not target_years:
+            current_year = int(source_year)
+            for year in range(current_year + 1, current_year + 10):
+                year_str = str(year)
+                if year_str not in finalized_years:
+                    target_years.append(year_str)
+        
+        for target_year in target_years:
+            if target_year not in finalized_years:
+                client.custom_tasks_by_year[target_year] = source_tasks.copy()
+                propagated_to.append(target_year)
+        
+        flag_modified(client, "custom_tasks_by_year")
+        client.updated_at = datetime.now(timezone.utc)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": f"Tasks propagated to {len(propagated_to)} years",
+            "source_year": source_year,
+            "propagated_to": propagated_to,
+            "tasks": source_tasks
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error propagating tasks: {e}")
+        return jsonify({"error": "Could not propagate tasks"}), 500
+
 # --- CLI Commands ---
 
 @app.cli.command("init-db")

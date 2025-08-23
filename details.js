@@ -385,19 +385,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    saveTasksButton.addEventListener('click', () => {
+    saveTasksButton.addEventListener('click', async () => {
         // Initialize custom_tasks_by_year if it doesn't exist
         if (!clientDetails.custom_tasks_by_year) {
             clientDetails.custom_tasks_by_year = {};
         }
         
+        const oldTasks = clientDetails.custom_tasks_by_year[currentYearSelection] || [];
         const newTasks = currentEditingTasks.filter(task => task !== '');
+        const deletedTasks = oldTasks.filter(task => !newTasks.includes(task));
         
         // Save tasks for current year
         clientDetails.custom_tasks_by_year[currentYearSelection] = [...newTasks];
         
         // Propagate changes to future unfinalized years
         propagateTasksToFutureYears(currentYearSelection, newTasks);
+        
+        try {
+            // Immediately sync tasks to database
+            await syncCustomTasksToDatabase(currentYearSelection, newTasks);
+            
+            // Clean up deleted tasks from monthly data
+            if (deletedTasks.length > 0) {
+                await cleanupDeletedTasks(currentYearSelection, deletedTasks);
+                showSyncStatus(`カスタムタスクを同期し、${deletedTasks.length}項目をDBから削除しました`, 'success');
+            } else {
+                showSyncStatus('カスタムタスクをDBに同期しました', 'success');
+            }
+        } catch (error) {
+            console.error('Failed to sync custom tasks:', error);
+            showSyncStatus('DBへの同期に失敗しました', 'error');
+        }
         
         setUnsavedChanges(true);
         taskEditModal.style.display = 'none';
@@ -663,6 +681,212 @@ document.addEventListener('DOMContentLoaded', async () => {
         return monthData.tasks[taskName];
     }
 
+    // --- Custom Tasks Sync Functions ---
+    async function syncCustomTasksToDatabase(year, customTasks) {
+        const response = await fetch(`${API_BASE_URL}/clients/${clientNo}/custom-tasks/${year}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                custom_tasks: customTasks
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to sync custom tasks');
+        }
+
+        return response.json();
+    }
+
+    async function checkCustomTasksSync() {
+        const response = await fetch(`${API_BASE_URL}/clients/${clientNo}/custom-tasks/sync-check`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                custom_tasks_by_year: clientDetails.custom_tasks_by_year || {}
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to check sync');
+        }
+
+        return response.json();
+    }
+
+    function showSyncStatus(message, type) {
+        const statusDiv = document.createElement('div');
+        statusDiv.className = `sync-status ${type}`;
+        statusDiv.textContent = message;
+        statusDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 4px;
+            z-index: 10000;
+            font-weight: bold;
+            ${type === 'success' ? 'background: #4CAF50; color: white;' : 'background: #f44336; color: white;'}
+        `;
+        
+        document.body.appendChild(statusDiv);
+        
+        setTimeout(() => {
+            document.body.removeChild(statusDiv);
+        }, 3000);
+    }
+
+    async function cleanupDeletedTasks(year, deletedTasks) {
+        const response = await fetch(`${API_BASE_URL}/clients/${clientNo}/cleanup-deleted-tasks`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                year: year,
+                deleted_tasks: deletedTasks
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to cleanup deleted tasks');
+        }
+
+        return response.json();
+    }
+
+    async function propagateTasksToDatabase(sourceYear, targetYears = []) {
+        const response = await fetch(`${API_BASE_URL}/clients/${clientNo}/propagate-tasks`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                source_year: sourceYear,
+                target_years: targetYears
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to propagate tasks');
+        }
+
+        return response.json();
+    }
+
+    // Add management buttons to the UI
+    function addManagementButtons() {
+        // Create container for management buttons
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'management-buttons';
+        buttonContainer.style.cssText = `
+            margin: 10px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        `;
+
+        // Data sync check button
+        const syncButton = document.createElement('button');
+        syncButton.textContent = 'データ整合性チェック';
+        syncButton.className = 'sync-check-button';
+        syncButton.style.cssText = `
+            padding: 8px 16px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        `;
+        
+        syncButton.addEventListener('click', async () => {
+            try {
+                const result = await checkCustomTasksSync();
+                
+                if (result.is_synced) {
+                    showSyncStatus('データは同期されています', 'success');
+                } else {
+                    console.log('Sync mismatches found:', result.mismatches);
+                    showSyncStatus(`${result.mismatches.length}件の不整合を検出しました`, 'error');
+                    
+                    // Show detailed mismatch information
+                    let details = 'データベースとの不整合:\n';
+                    result.mismatches.forEach(mismatch => {
+                        details += `\n年度 ${mismatch.year}:`;
+                        if (mismatch.missing_in_db.length > 0) {
+                            details += `\n  DBに未反映: ${mismatch.missing_in_db.join(', ')}`;
+                        }
+                        if (mismatch.missing_in_frontend.length > 0) {
+                            details += `\n  フロントエンドに未反映: ${mismatch.missing_in_frontend.join(', ')}`;
+                        }
+                    });
+                    
+                    if (confirm(details + '\n\nデータベースの内容でフロントエンドを更新しますか？')) {
+                        clientDetails.custom_tasks_by_year = result.db_tasks_by_year;
+                        renderDetails();
+                        showSyncStatus('フロントエンドを更新しました', 'success');
+                    }
+                }
+            } catch (error) {
+                console.error('Sync check failed:', error);
+                showSyncStatus('整合性チェックに失敗しました', 'error');
+            }
+        });
+
+        // Propagate to future years button
+        const propagateButton = document.createElement('button');
+        propagateButton.textContent = '項目を翌期以降に再反映';
+        propagateButton.className = 'propagate-button';
+        propagateButton.style.cssText = `
+            padding: 8px 16px;
+            background: #FF9800;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        `;
+        
+        propagateButton.addEventListener('click', async () => {
+            if (confirm(`${currentYearSelection}年の項目構成を翌期以降の未確定年度にすべて再反映しますか？\n（既に確定済みの年度は変更されません）`)) {
+                try {
+                    const result = await propagateTasksToDatabase(currentYearSelection);
+                    showSyncStatus(`${result.propagated_to.length}年度に項目を再反映しました`, 'success');
+                    
+                    // Update frontend data
+                    result.propagated_to.forEach(year => {
+                        if (!clientDetails.custom_tasks_by_year) {
+                            clientDetails.custom_tasks_by_year = {};
+                        }
+                        clientDetails.custom_tasks_by_year[year] = [...result.tasks];
+                    });
+                    
+                    renderDetails();
+                } catch (error) {
+                    console.error('Failed to propagate tasks:', error);
+                    showSyncStatus('項目の再反映に失敗しました', 'error');
+                }
+            }
+        });
+
+        buttonContainer.appendChild(syncButton);
+        buttonContainer.appendChild(propagateButton);
+        
+        // Add container after edit tasks button
+        editTasksButton.parentNode.insertBefore(buttonContainer, editTasksButton.nextSibling);
+    }
+
     // --- Run Application ---
-    initializeApp();
+    initializeApp().then(() => {
+        addManagementButtons();
+    });
 });
