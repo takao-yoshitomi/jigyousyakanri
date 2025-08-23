@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const notesTableBody = document.querySelector('#notes-table tbody');
     const yearFilter = document.getElementById('year-filter');
     const editTasksButton = document.getElementById('edit-tasks-button');
+    const saveChangesButton = document.getElementById('save-changes-button');
     const finalizeYearButton = document.getElementById('finalize-year-button');
     const saveStatus = document.getElementById('save-status');
     const pageOverlay = document.createElement('div');
@@ -22,19 +23,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     let allTaskNames = [];
     let isSaving = false;
     let hasConflict = false;
-    let hasUnsavedChanges = false; // Dirty flag for unsaved changes
+    let hasUnsavedChanges = false;
     let saveStatusTimeout;
 
-    // --- Utility Functions ---
-    const debounce = (func, delay) => {
-        let timeoutId;
-        return (...args) => {
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => {
-                func.apply(this, args);
-            }, delay);
-        };
-    };
+    // --- State Management ---
+    function setUnsavedChanges(isDirty) {
+        hasUnsavedChanges = isDirty;
+        saveChangesButton.disabled = !isDirty;
+    }
 
     // --- Initialization ---
     async function initializeApp() {
@@ -74,8 +70,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    const saveClientDetails = debounce(async () => {
-        if (hasConflict || !hasUnsavedChanges) return;
+    async function performSave() {
+        if (hasConflict || isSaving) return;
         isSaving = true;
         showSaveStatus('saving');
 
@@ -102,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const updatedClientDetails = await response.json();
             clientDetails = updatedClientDetails;
-            hasUnsavedChanges = false; // Reset dirty flag on successful save
+            setUnsavedChanges(false); // Reset dirty flag and disable button
             showSaveStatus('success');
 
         } catch (error) {
@@ -111,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } finally {
             isSaving = false;
         }
-    }, 500); // <-- Debounce delay reduced to 500ms
+    }
 
     function showSaveStatus(status) {
         clearTimeout(saveStatusTimeout);
@@ -133,8 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         saveStatus.classList.add('visible');
 
-        // Hide status after a delay, except for errors
-        if (status === 'success') {
+        if (status === 'success' || status === 'error') {
             saveStatusTimeout = setTimeout(() => {
                 saveStatus.classList.remove('visible');
             }, 3000);
@@ -160,22 +155,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentYearSelection = event.target.value;
             renderDetails();
         });
-        editTasksButton.disabled = false;
         editTasksButton.addEventListener('click', openTaskEditModal);
+        saveChangesButton.addEventListener('click', performSave);
         finalizeYearButton.addEventListener('click', () => {
             alert('「この年度の項目を確定」機能は現在開発中です。');
         });
 
-        // Warn user before leaving if there are unsaved changes
         window.addEventListener('beforeunload', (e) => {
             if (hasUnsavedChanges) {
                 e.preventDefault();
-                e.returnValue = ''; // Required for legacy browsers
+                e.returnValue = '';
             }
         });
     }
 
-    // --- Modal Logic (with unsaved changes flag) ---
+    // --- Modal Logic ---
     const taskEditModal = document.getElementById('task-edit-modal');
     const closeButton = taskEditModal.querySelector('.close-button');
     const taskListContainer = document.getElementById('task-list-container');
@@ -228,9 +222,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     saveTasksButton.addEventListener('click', () => {
-        hasUnsavedChanges = true;
         clientDetails.custom_tasks = currentEditingTasks.filter(task => task !== '');
-        saveClientDetails();
+        setUnsavedChanges(true);
         taskEditModal.style.display = 'none';
         renderDetails();
     });
@@ -312,18 +305,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 checkbox.addEventListener('change', () => {
                     if (hasConflict) return;
-                    hasUnsavedChanges = true;
                     taskData.checked = checkbox.checked;
                     updateMonthlyStatus(monthData, allTaskNames);
                     cell.classList.toggle('task-completed', checkbox.checked);
-                    saveClientDetails();
+                    setUnsavedChanges(true);
                 });
 
                 memoTextarea.addEventListener('input', (e) => {
                     if (hasConflict) return;
-                    hasUnsavedChanges = true;
                     taskData.note = e.target.value;
-                    saveClientDetails();
+                    setUnsavedChanges(true);
                 });
             });
         });
@@ -362,9 +353,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             urlInput.disabled = isYearFinalized;
             urlInput.addEventListener('input', (e) => {
                 if (hasConflict) return;
-                hasUnsavedChanges = true;
                 monthData.url = e.target.value;
-                saveClientDetails();
+                setUnsavedChanges(true);
             });
             urlCell.appendChild(urlInput);
         });
@@ -382,9 +372,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             memoTextarea.disabled = isYearFinalized;
             memoTextarea.addEventListener('input', (e) => {
                 if (hasConflict) return;
-                hasUnsavedChanges = true;
                 monthData.memo = e.target.value;
-                saveClientDetails();
+                setUnsavedChanges(true);
             });
             memoCell.appendChild(memoTextarea);
         });

@@ -547,7 +547,7 @@ th[data-sort-key]:hover .sort-icon {
     background-color: #0056b3;
 }
 
-#edit-tasks-button, #finalize-year-button {
+#edit-tasks-button, #finalize-year-button, #save-changes-button {
     padding: 10px 20px; /* パディングを調整してボタンを大きくする */
     font-size: 1rem; /* フォントサイズを調整 */
     border: 1px solid #ccc; /* この行を追加 */
@@ -555,6 +555,23 @@ th[data-sort-key]:hover .sort-icon {
     cursor: pointer;
     transition: background-color 0.3s ease;
     margin-left: 10px; /* 必要に応じてマージンを調整 */
+}
+
+#save-changes-button {
+    background-color: #28a745; /* Green for active state */
+    color: white;
+}
+
+#save-changes-button:disabled {
+    background-color: #6c757d; /* Gray for disabled state */
+    color: #e0e0e0;
+    cursor: not-allowed;
+    transform: none; /* Remove hover effect */
+    box-shadow: none; /* Remove shadow */
+}
+
+#save-changes-button:disabled:hover {
+    background-color: #6c757d; /* Keep color on hover when disabled */
 }
 
 #edit-tasks-button:hover, #finalize-year-button:hover {
