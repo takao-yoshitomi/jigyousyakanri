@@ -695,6 +695,7 @@ th[data-sort-key]:hover .sort-icon {
 /* Center align month headers in the main details table */
 .details-table th.month-header {
     text-align: center;
+    cursor: pointer;
 }
 
 /* Center align the first column (titles) in the notes table */

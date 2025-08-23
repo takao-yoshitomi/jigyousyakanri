@@ -273,6 +273,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             const th = document.createElement('th');
             th.textContent = monthStr;
             th.classList.add('month-header');
+            th.addEventListener('click', () => {
+                if (hasConflict) return;
+                const columnIndex = Array.from(th.parentNode.children).indexOf(th);
+
+                let allChecked = true;
+                allTaskNames.forEach((taskName) => {
+                    const monthData = findOrCreateMonthlyTask(clientDetails, monthStr);
+                    const taskData = findOrCreateTask(monthData, taskName);
+                    if (!taskData.checked) {
+                        allChecked = false;
+                    }
+                });
+
+                allTaskNames.forEach((taskName, rowIndex) => {
+                    const monthData = findOrCreateMonthlyTask(clientDetails, monthStr);
+                    const taskData = findOrCreateTask(monthData, taskName);
+                    taskData.checked = !allChecked;
+                    const checkbox = detailsTableBody.rows[rowIndex].cells[columnIndex].querySelector('.task-checkbox');
+                    if (checkbox) {
+                        checkbox.checked = taskData.checked;
+                        checkbox.parentNode.classList.toggle('task-completed', checkbox.checked);
+                    }
+                });
+
+                updateMonthlyStatus(findOrCreateMonthlyTask(clientDetails, monthStr), allTaskNames);
+                setUnsavedChanges(true);
+            });
             taskHeaderRow.appendChild(th);
         });
 
