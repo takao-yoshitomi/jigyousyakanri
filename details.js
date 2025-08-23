@@ -158,7 +158,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         editTasksButton.addEventListener('click', openTaskEditModal);
         saveChangesButton.addEventListener('click', performSave);
         finalizeYearButton.addEventListener('click', () => {
-            alert('「この年度の項目を確定」機能は現在開発中です。');
+            const isCurrentlyFinalized = clientDetails.finalized_years && clientDetails.finalized_years.includes(currentYearSelection);
+            const action = isCurrentlyFinalized ? '解除' : '確定';
+            
+            if (confirm(`${currentYearSelection}年度の項目を${action}しますか？`)) {
+                // Initialize finalized_years if it doesn't exist
+                if (!clientDetails.finalized_years) {
+                    clientDetails.finalized_years = [];
+                }
+                
+                if (isCurrentlyFinalized) {
+                    // Remove from finalized years
+                    clientDetails.finalized_years = clientDetails.finalized_years.filter(year => year !== currentYearSelection);
+                } else {
+                    // Add to finalized years
+                    if (!clientDetails.finalized_years.includes(currentYearSelection)) {
+                        clientDetails.finalized_years.push(currentYearSelection);
+                    }
+                }
+                
+                setUnsavedChanges(true);
+                renderDetails(); // Re-render to update UI state
+            }
         });
 
         window.addEventListener('beforeunload', (e) => {
@@ -180,7 +201,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentEditingTasks = [];
 
     function openTaskEditModal() {
-        currentEditingTasks = [...(clientDetails.custom_tasks || [])];
+        // Get custom tasks for current year
+        currentEditingTasks = [...((clientDetails.custom_tasks_by_year && clientDetails.custom_tasks_by_year[currentYearSelection]) || [])];
         renderTaskList(currentEditingTasks);
         taskEditModal.style.display = 'block';
     }
@@ -222,7 +244,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     saveTasksButton.addEventListener('click', () => {
-        clientDetails.custom_tasks = currentEditingTasks.filter(task => task !== '');
+        // Initialize custom_tasks_by_year if it doesn't exist
+        if (!clientDetails.custom_tasks_by_year) {
+            clientDetails.custom_tasks_by_year = {};
+        }
+        // Save tasks for current year
+        clientDetails.custom_tasks_by_year[currentYearSelection] = currentEditingTasks.filter(task => task !== '');
         setUnsavedChanges(true);
         taskEditModal.style.display = 'none';
         renderDetails();
@@ -240,7 +267,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!clientDetails) return;
 
-        const isYearFinalized = false;
+        // Check if current year is finalized
+        const isYearFinalized = clientDetails.finalized_years && clientDetails.finalized_years.includes(currentYearSelection);
 
         clientInfoArea.innerHTML = `
             <table class="client-info-table">
@@ -258,8 +286,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `${year}年${month}月`;
         }).reverse();
 
-        allTaskNames = clientDetails.custom_tasks || [];
+        // Get custom tasks for current year
+        allTaskNames = (clientDetails.custom_tasks_by_year && clientDetails.custom_tasks_by_year[currentYearSelection]) || [];
 
+        // Update finalize button text and state
+        finalizeYearButton.textContent = isYearFinalized ? 
+            `${currentYearSelection}年度の確定を解除` : 
+            `${currentYearSelection}年度の項目を確定`;
+        
+        // Disable edit tasks button for finalized years
+        editTasksButton.disabled = isYearFinalized;
+        
         renderTaskAndMemoTable(isYearFinalized);
         renderUrlAndMemoTable(isYearFinalized);
     }
