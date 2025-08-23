@@ -218,7 +218,22 @@ document.addEventListener('DOMContentLoaded', () => {
             row.insertCell().textContent = `${client.fiscal_month}月`;
             row.insertCell().textContent = client.unattendedMonths;
             row.insertCell().textContent = client.monthlyProgress;
-            row.insertCell().textContent = 'N/A'; // lastUpdated is not available yet
+            const updatedAtCell = row.insertCell();
+            if (client.updated_at) {
+                const date = new Date(client.updated_at);
+                const jstString = date.toLocaleString('ja-JP', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                    timeZone: 'Asia/Tokyo'
+                });
+                updatedAtCell.textContent = jstString;
+            } else {
+                updatedAtCell.textContent = 'N/A';
+            }
             row.insertCell().textContent = client.staff_name;
             row.insertCell().textContent = client.accounting_method;
             
