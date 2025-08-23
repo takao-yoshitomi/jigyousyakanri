@@ -185,6 +185,7 @@ def get_client_details(client_id):
             'name': client.name,
             'fiscal_month': client.fiscal_month,
             'staff_id': client.staff_id,
+            'status': client.status,
             'accounting_method': client.accounting_method,
             'custom_tasks': client.custom_tasks,
             'monthly_tasks': [task.to_dict() for task in client.monthly_tasks],
