@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State Variables ---
     let clients = [];
     let staffs = [];
-    let currentSortKey = 'fiscalMonth';
+    let currentSortKey = 'fiscal_month';
     let currentSortDirection = 'asc';
     let originalStaffsState = [];
     let currentEditingStaffs = [];

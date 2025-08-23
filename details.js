@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const clientNo = urlParams.get('no');
     let clientDetails = null;
-    let currentYearSelection = new Date().getFullYear().toString();
+    let currentYearSelection = new Date().getFullYear().toString(); // Will be updated after data load
     let monthsToDisplay = [];
     let allTaskNames = [];
     let isSaving = false;
@@ -127,6 +127,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 3000);
     }
 
+    // --- Year Selection Logic ---
+    function determineOptimalYear() {
+        if (!clientDetails || !clientDetails.finalized_years) {
+            return new Date().getFullYear().toString();
+        }
+        
+        // Find the latest finalized year
+        const finalizedYears = clientDetails.finalized_years.map(year => parseInt(year)).sort((a, b) => b - a);
+        
+        if (finalizedYears.length === 0) {
+            // No finalized years, use current year
+            return new Date().getFullYear().toString();
+        }
+        
+        // Return the year after the latest finalized year
+        const latestFinalizedYear = finalizedYears[0];
+        const nextYear = latestFinalizedYear + 1;
+        
+        console.log(`Latest finalized year: ${latestFinalizedYear}, selecting: ${nextYear}`);
+        return nextYear.toString();
+    }
+
+    function updateCustomDropdownDisplay(selectElement) {
+        const wrapper = selectElement.closest('.custom-select-wrapper');
+        if (!wrapper) return;
+        
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        if (!trigger) return;
+        
+        const selectedOption = Array.from(selectElement.options).find(option => option.value === selectElement.value);
+        if (selectedOption) {
+            trigger.textContent = selectedOption.textContent;
+            console.log(`Updated custom dropdown display to: ${selectedOption.textContent}`);
+        }
+    }
+
     // --- Initialization ---
     async function initializeApp() {
         if (!clientNo) {
@@ -139,7 +175,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             clientDetails = await fetchClientDetails(clientNo);
             if (clientDetails) {
+                // Determine optimal year after data is loaded
+                currentYearSelection = determineOptimalYear();
+                
                 addEventListeners();
+                
+                // Update year filter after setup and ensure it's set correctly
+                setTimeout(() => {
+                    yearFilter.value = currentYearSelection;
+                    updateCustomDropdownDisplay(yearFilter);
+                    console.log(`Year filter updated to: ${currentYearSelection}`);
+                }, 0);
+                
                 renderDetails();
             } else {
                 clientInfoArea.innerHTML = '<p>クライアントデータが見つかりません。</p>';
@@ -369,6 +416,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!clientDetails) return;
 
+        // Ensure year filter displays current selection
+        if (yearFilter.value !== currentYearSelection) {
+            yearFilter.value = currentYearSelection;
+            updateCustomDropdownDisplay(yearFilter);
+        }
+        
         // Check if current year is finalized
         const isYearFinalized = clientDetails.finalized_years && clientDetails.finalized_years.includes(currentYearSelection);
 
