@@ -656,76 +656,48 @@ def init_db_command():
             {"no":402,"name":"サンプル会社402","fiscal_month":"3月","担当者":"高橋","accounting_method":"記帳代行","status":"未着手"},
         ]
 
-        initial_client_details_data = [
-            {
-                "no": 101, "name": "株式会社アルファ", "fiscal_month": "1月","担当者": "佐藤",
-                "custom_tasks": ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"],
-                "monthly_tasks": [
-                    { "month": "2025年7月", "tasks": { "受付": True, "入力": True, "会計チェック": True, "担当者解決": True, "不明点": True, "試算表作成": True, "代表報告": True, "仕分け確認": True, "先生ロック": True }, "status": "月次完了", "url": "", "memo": "" },
-                    { "month": "2025年8月", "tasks": { "受付": True, "入力": True, "会計チェック": True, "担当者解決": True, "不明点": True, "試算表作成": True, "代表報告": True, "仕分け確認": True, "先生ロック": True }, "status": "月次完了", "url": "", "memo": "" }
-                ]
-            },
-            {
-                "no": 103, "name": "合同会社ベータ", "fiscal_month": "1月","担当者": "鈴木",
-                "custom_tasks": ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"],
-                "monthly_tasks": [
-                    { "month": "2025年7月", "tasks": { "受付": False, "入力": False, "会計チェック": False, "担当者解決": False, "不明点": False, "試算表作成": False, "代表報告": False, "仕分け確認": False, "先生ロック": False }, "status": "未入力", "url": "", "memo": "" },
-                ]
-            },
-        ]
-
-        for client_data in initial_clients_data:
-            fiscal_month_int = int(client_data["fiscal_month"].replace('月',''))
-            client = Client(
-                id=client_data["no"],
-                name=client_data["name"],
-                fiscal_month=fiscal_month_int,
-                staff_id=staff_map[client_data["担当者"]],
-                accounting_method=client_data["accounting_method"],
-                status=client_data["status"],
-                custom_tasks_by_year={},
-                finalized_years=[]
-            )
-            db.session.add(client)
-
-        for detail_data in initial_client_details_data:
-            client = Client.query.get(detail_data["no"])
-            if client:
-                current_year = str(datetime.now().year)
-                custom_tasks = detail_data.get("custom_tasks", [])
-                client.custom_tasks_by_year = {current_year: custom_tasks} if custom_tasks else {}
-                client.finalized_years = []
-                for task_data in detail_data.get("monthly_tasks", []):
-                    monthly_task = MonthlyTask(
-                        client_id=client.id,
-                        month=task_data["month"],
-                        tasks=task_data["tasks"],
-                        status=task_data["status"],
-                        url=task_data["url"],
-                        memo=task_data["memo"]
-                    )
-                    db.session.add(monthly_task)
-
-        db.session.commit()
-
         # --- Initial Default Tasks ---
         default_tasks_data = [
             {
                 "accounting_method": "記帳代行",
-                "tasks": ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"]
+                "tasks": ["受付", "入力確認", "不明点解消", "先生へ報告"]
             },
             {
                 "accounting_method": "自計",
-                "tasks": ["データ受領", "監査", "不明点確認", "試算表送付"]
+                "tasks": ["データ受領", "入力確認", "不明点解消", "先生へ報告"]
             }
         ]
-
         for data in default_tasks_data:
             default_task = DefaultTask(
                 accounting_method=data["accounting_method"],
                 tasks=data["tasks"]
             )
             db.session.add(default_task)
+        db.session.commit()
+
+        # Fetch the just-created default tasks to use for seeding clients
+        default_tasks_map = {d.accounting_method: d.tasks for d in DefaultTask.query.all()}
+        current_year_str = str(datetime.now().year)
+
+        for client_data in initial_clients_data:
+            fiscal_month_int = int(client_data["fiscal_month"].replace('月',''))
+            accounting_method = client_data["accounting_method"]
+            
+            # Get default tasks for the client's accounting method
+            tasks_for_method = default_tasks_map.get(accounting_method, [])
+            initial_custom_tasks = {current_year_str: tasks_for_method} if tasks_for_method else {}
+
+            client = Client(
+                id=client_data["no"],
+                name=client_data["name"],
+                fiscal_month=fiscal_month_int,
+                staff_id=staff_map[client_data["担当者"]],
+                accounting_method=accounting_method,
+                status=client_data["status"],
+                custom_tasks_by_year=initial_custom_tasks,
+                finalized_years=[]
+            )
+            db.session.add(client)
 
         db.session.commit()
         print("Database initialized and seeded with initial data.")
