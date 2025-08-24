@@ -122,7 +122,21 @@ def get_clients():
             
             client_dict['monthlyProgress'] = latest_completed_month
             
-            # unattendedMonths can also be calculated here if needed
+            # Calculate unattended months
+            unattended_months_str = "-"
+            if latest_completed_month != "未完了":
+                try:
+                    completed_date = datetime.strptime(latest_completed_month, '%Y年%m月')
+                    current_date = datetime.now()
+                    month_diff = (current_date.year - completed_date.year) * 12 + (current_date.month - completed_date.month)
+                    if month_diff > 0:
+                        unattended_months_str = f"{month_diff}ヶ月"
+                    else:
+                        unattended_months_str = "0ヶ月"
+                except ValueError:
+                    unattended_months_str = "エラー"
+            
+            client_dict['unattendedMonths'] = unattended_months_str
 
             client_list.append(client_dict)
 
