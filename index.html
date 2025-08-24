@@ -5,17 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>顧客進捗管理 - メイン画面</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="custom-dropdown.css"> <!-- Add custom dropdown CSS -->
+    <link rel="stylesheet" href="custom-dropdown.css">
 </head>
 <body>
-    <!-- 管理者編集ボタン -->
-    <div class="admin-controls">
-        <button id="manage-staff-button">担当者管理</button>
-        <button id="add-client-button">顧問先追加</button>
-        <hr>
-        <button id="export-data-button">エクスポート</button>
-        <button id="import-data-button">インポート</button>
-        <input type="file" id="import-file-input" style="display: none;" accept=".json">
+    <div id="management-accordion" class="accordion-container" style="right: 20px; top: 20px;">
+        <button class="accordion-header">
+            <span>🎛️ 管理メニュー</span>
+            <span class="accordion-icon">▼</span>
+        </button>
+        <div class="accordion-content">
+            <div class="accordion-buttons-container">
+                <button id="manage-staff-button" class="accordion-button">担当者管理</button>
+                <button id="add-client-button" class="accordion-button">顧問先追加</button>
+                <hr>
+                <button id="default-tasks-settings-button" class="accordion-button">項目の初期値の設定</button>
+                <button id="export-data-button" class="accordion-button">エクスポート</button>
+                <button id="import-data-button" class="accordion-button">インポート</button>
+                <input type="file" id="import-file-input" style="display: none;" accept=".json">
+            </div>
+        </div>
     </div>
 
     <div class="container">
@@ -52,7 +60,6 @@
                     <th>担当者</th>
                     <th>経理方式</th>
                     <th>進捗ステータス</th>
-                    
                 </tr>
             </thead>
             <tbody>
@@ -80,8 +87,37 @@
         </div>
     </div>
 
-    
-    <script src="custom-dropdown.js"></script> <!-- Add custom dropdown JS -->
+    <!-- Default Tasks Modal -->
+    <div id="default-tasks-modal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <span class="close-button">&times;</span>
+            <h2>項目の初期値の設定</h2>
+            <div class="default-tasks-container">
+                <div class="task-column">
+                    <h3>記帳代行</h3>
+                    <div id="tasks-kityo" class="task-list-container"></div>
+                    <div class="add-task-section">
+                        <input type="text" id="new-task-kityo" placeholder="新しい項目を追加">
+                        <button data-target="kityo">追加</button>
+                    </div>
+                </div>
+                <div class="task-column">
+                    <h3>自計</h3>
+                    <div id="tasks-jikei" class="task-list-container"></div>
+                    <div class="add-task-section">
+                        <input type="text" id="new-task-jikei" placeholder="新しい項目を追加">
+                        <button data-target="jikei">追加</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button id="save-default-tasks-button">保存</button>
+                <button id="cancel-default-tasks-button">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="custom-dropdown.js"></script>
     <script src="index.js"></script>
 </body>
 </html>

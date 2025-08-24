@@ -13,6 +13,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const addStaffButton = document.getElementById('add-staff-button');
     const saveStaffButton = document.getElementById('save-staff-button');
     const cancelStaffButton = document.getElementById('cancel-staff-button');
+
+    // Accordion and Default Tasks Modal elements
+    const accordionHeader = document.querySelector('#management-accordion .accordion-header');
+    const accordionContent = document.querySelector('#management-accordion .accordion-content');
+    const defaultTasksModal = document.getElementById('default-tasks-modal');
+    const openDefaultTasksModalButton = document.getElementById('default-tasks-settings-button');
+    const closeDefaultTasksModalButton = defaultTasksModal.querySelector('.close-button');
+    const saveDefaultTasksButton = document.getElementById('save-default-tasks-button');
+    const cancelDefaultTasksButton = document.getElementById('cancel-default-tasks-button');
+    const tasksKityoContainer = document.getElementById('tasks-kityo');
+    const tasksJikeiContainer = document.getElementById('tasks-jikei');
+    const defaultTasksContainer = defaultTasksModal.querySelector('.default-tasks-container');
     
     // Data I/O buttons are disabled for now
     // const exportDataButton = document.getElementById('export-data-button');
@@ -26,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSortDirection = 'asc';
     let originalStaffsState = [];
     let currentEditingStaffs = [];
+    let defaultTasks = {}; // State for default tasks
 
     const API_BASE_URL = 'http://localhost:5001/api';
 
@@ -138,8 +151,120 @@ document.addEventListener('DOMContentLoaded', () => {
 
         addStaffButton.addEventListener('click', addStaff);
         saveStaffButton.addEventListener('click', saveStaff);
-        staffListContainer.addEventListener('click', handleStaffListClick);
         staffListContainer.addEventListener('input', handleStaffListInput);
+
+        // Accordion and Modal Listeners
+        accordionHeader.addEventListener('click', toggleAccordion);
+        openDefaultTasksModalButton.addEventListener('click', openDefaultTasksModal);
+        closeDefaultTasksModalButton.addEventListener('click', () => defaultTasksModal.style.display = 'none');
+        cancelDefaultTasksButton.addEventListener('click', () => defaultTasksModal.style.display = 'none');
+        defaultTasksContainer.addEventListener('click', handleDefaultTasksClick);
+        saveDefaultTasksButton.addEventListener('click', saveDefaultTasks);
+
+        window.addEventListener('click', (event) => {
+            if (event.target === staffEditModal) {
+                staffEditModal.style.display = 'none';
+            }
+            if (event.target === defaultTasksModal) {
+                defaultTasksModal.style.display = 'none';
+            }
+        });
+    }
+
+    // --- Accordion and Default Tasks Modal Logic ---
+
+    function toggleAccordion() {
+        const isOpen = accordionContent.style.display === 'block';
+        accordionContent.style.display = isOpen ? 'none' : 'block';
+        accordionHeader.querySelector('.accordion-icon').textContent = isOpen ? '▼' : '▲';
+    }
+
+    async function openDefaultTasksModal() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/default-tasks`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch default tasks');
+            }
+            defaultTasks = await response.json();
+            
+            renderDefaultTaskList('kityo', defaultTasks['記帳代行'] || []);
+            renderDefaultTaskList('jikei', defaultTasks['自計'] || []);
+            
+            defaultTasksModal.style.display = 'block';
+        } catch (error) {
+            console.error(error);
+            alert('初期設定の読み込みに失敗しました。');
+        }
+    }
+
+    function renderDefaultTaskList(target, tasks) {
+        const container = target === 'kityo' ? tasksKityoContainer : tasksJikeiContainer;
+        container.innerHTML = '';
+        tasks.forEach((task, index) => {
+            const taskItem = document.createElement('div');
+            taskItem.classList.add('task-item');
+            taskItem.innerHTML = `
+                <input type="text" value="${task}" data-index="${index}">
+                <button class="delete-task-button" data-index="${index}">削除</button>
+            `;
+            container.appendChild(taskItem);
+        });
+    }
+
+    function handleDefaultTasksClick(event) {
+        const button = event.target.closest('button');
+        if (!button) return;
+
+        const taskColumn = event.target.closest('.task-column');
+        const target = taskColumn.querySelector('.task-list-container').id.includes('kityo') ? 'kityo' : 'jikei';
+        const method = target === 'kityo' ? '記帳代行' : '自計';
+        let currentTasks = defaultTasks[method] || [];
+
+        // Add button
+        if (button.dataset.target) {
+            const input = taskColumn.querySelector('input[type="text"][placeholder]');
+            const newTaskName = input.value.trim();
+            if (newTaskName && !currentTasks.includes(newTaskName)) {
+                currentTasks.push(newTaskName);
+                renderDefaultTaskList(target, currentTasks);
+                input.value = '';
+            }
+        }
+        // Delete button
+        else if (button.classList.contains('delete-task-button')) {
+            const index = parseInt(button.dataset.index, 10);
+            currentTasks.splice(index, 1);
+            renderDefaultTaskList(target, currentTasks);
+        }
+    }
+
+    async function saveDefaultTasks() {
+        // Collect data from inputs, in case of edits
+        const kityoTasks = Array.from(tasksKityoContainer.querySelectorAll('.task-item input')).map(input => input.value.trim()).filter(Boolean);
+        const jikeiTasks = Array.from(tasksJikeiContainer.querySelectorAll('.task-item input')).map(input => input.value.trim()).filter(Boolean);
+
+        const updatedTasks = {
+            '記帳代行': kityoTasks,
+            '自計': jikeiTasks
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/default-tasks`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedTasks)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save default tasks');
+            }
+
+            alert('初期値を保存しました。');
+            defaultTasksModal.style.display = 'none';
+        } catch (error) {
+            console.error(error);
+            alert('保存に失敗しました。');
+        }
     }
 
     // --- Data Fetching Functions ---

@@ -8,6 +8,9 @@ from sqlalchemy.exc import IntegrityError
 from flask_cors import CORS
 from datetime import datetime, timezone
 import click
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -84,6 +87,22 @@ class MonthlyTask(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
+class DefaultTask(db.Model):
+    __tablename__ = 'default_tasks'
+    id = db.Column(db.Integer, primary_key=True)
+    accounting_method = db.Column(db.String(255), nullable=False, unique=True)
+    tasks = db.Column(db.JSON, default=[])
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'accounting_method': self.accounting_method,
+            'tasks': self.tasks,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
 # --- API Endpoints ---
 
 @app.route('/api/clients', methods=['GET'])
@@ -144,6 +163,14 @@ def create_client():
         if status not in valid_statuses:
             return jsonify({"error": f"Invalid status. Must be one of: {', '.join(valid_statuses)}"}), 400
 
+        # Fetch default tasks based on accounting method
+        default_tasks = DefaultTask.query.filter_by(accounting_method=data['accounting_method']).first()
+        
+        initial_custom_tasks = {}
+        if default_tasks and default_tasks.tasks:
+            current_year = str(datetime.now().year)
+            initial_custom_tasks[current_year] = default_tasks.tasks
+
         new_client = Client(
             id=data['id'],
             name=data['name'].strip(),
@@ -151,7 +178,7 @@ def create_client():
             staff_id=data['staff_id'],
             accounting_method=data['accounting_method'],
             status=status, # ここで設定
-            custom_tasks_by_year={},
+            custom_tasks_by_year=initial_custom_tasks,
             finalized_years=[]
         )
         
@@ -359,6 +386,43 @@ def update_staff(staff_id):
         db.session.rollback()
         print(f"Error updating staff: {e}")
         return jsonify({"error": "Could not update staff"}), 500
+
+
+# --- Default Tasks Management API ---
+
+@app.route('/api/default-tasks', methods=['GET'])
+def get_default_tasks():
+    try:
+        defaults = DefaultTask.query.all()
+        return jsonify({d.accounting_method: d.tasks for d in defaults})
+    except Exception as e:
+        print(f"Error fetching default tasks: {e}")
+        return jsonify({"error": "Could not fetch default tasks"}), 500
+
+@app.route('/api/default-tasks', methods=['PUT'])
+def update_default_tasks():
+    from flask import request
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid data"}), 400
+
+    try:
+        for method, tasks in data.items():
+            default_task_entry = DefaultTask.query.filter_by(accounting_method=method).first()
+            if default_task_entry:
+                default_task_entry.tasks = tasks
+                flag_modified(default_task_entry, "tasks")
+            else:
+                # This case should ideally not happen if DB is seeded
+                new_default = DefaultTask(accounting_method=method, tasks=tasks)
+                db.session.add(new_default)
+        
+        db.session.commit()
+        return jsonify({"message": "Default tasks updated successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating default tasks: {e}")
+        return jsonify({"error": "Could not update default tasks"}), 500
 
 
 @app.route('/')
@@ -641,6 +705,27 @@ def init_db_command():
                         memo=task_data["memo"]
                     )
                     db.session.add(monthly_task)
+
+        db.session.commit()
+
+        # --- Initial Default Tasks ---
+        default_tasks_data = [
+            {
+                "accounting_method": "記帳代行",
+                "tasks": ["受付", "入力", "会計チェック", "担当者解決", "不明点", "試算表作成", "代表報告", "仕分け確認", "先生ロック"]
+            },
+            {
+                "accounting_method": "自計",
+                "tasks": ["データ受領", "監査", "不明点確認", "試算表送付"]
+            }
+        ]
+
+        for data in default_tasks_data:
+            default_task = DefaultTask(
+                accounting_method=data["accounting_method"],
+                tasks=data["tasks"]
+            )
+            db.session.add(default_task)
 
         db.session.commit()
         print("Database initialized and seeded with initial data.")
