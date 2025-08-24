@@ -109,7 +109,24 @@ class DefaultTask(db.Model):
 def get_clients():
     try:
         clients = Client.query.join(Staff).order_by(Client.id).all()
-        return jsonify([client.to_dict() for client in clients])
+        client_list = []
+        for client in clients:
+            client_dict = client.to_dict()
+            
+            # Calculate latest completed month
+            completed_tasks = [task for task in client.monthly_tasks if task.status == '月次完了']
+            latest_completed_month = "未完了"
+            if completed_tasks:
+                latest_task = max(completed_tasks, key=lambda task: datetime.strptime(task.month, '%Y年%m月'))
+                latest_completed_month = latest_task.month
+            
+            client_dict['monthlyProgress'] = latest_completed_month
+            
+            # unattendedMonths can also be calculated here if needed
+
+            client_list.append(client_dict)
+
+        return jsonify(client_list)
     except Exception as e:
         print(f"Error fetching clients: {e}")
         return jsonify({"error": "Could not fetch clients"}), 500
@@ -275,6 +292,7 @@ def update_client_details(client_id):
                     if task and task.client_id == client.id:
                         task.tasks = task_data.get('tasks', task.tasks)
                         flag_modified(task, "tasks")
+                        task.status = task_data.get('status', task.status) # <-- ADD THIS LINE
                         task.memo = task_data.get('memo', task.memo)
                         task.url = task_data.get('url', task.url)
                 else:

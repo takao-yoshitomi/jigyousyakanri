@@ -593,8 +593,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         monthsToDisplay.forEach(monthStr => {
             const statusCell = statusRow.insertCell();
             statusCell.className = 'monthly-status';
-            const targetMonthData = clientDetails.monthly_tasks.find(mt => mt.month === monthStr);
-            updateStatusCell(statusCell, targetMonthData, allTaskNames);
+            const monthData = findOrCreateMonthlyTask(clientDetails, monthStr);
+            // Calculate and set the initial status, then render the cell
+            updateMonthlyStatus(monthData, allTaskNames);
         });
     }
 
@@ -648,36 +649,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function updateStatusCell(cell, monthData, taskNames) {
-        if (!monthData || !monthData.tasks || taskNames.length === 0) {
+    function updateStatusCell(cell, monthData) {
+        if (!monthData || !monthData.status) {
             cell.textContent = '-';
             cell.style.backgroundColor = '#f0f0f0';
             return;
         }
-        const totalTasks = taskNames.length;
-        const completedTasks = taskNames.filter(task => monthData.tasks[task]?.checked).length;
 
-        if (totalTasks > 0 && totalTasks === completedTasks) {
-            cell.textContent = '月次完了';
-            cell.style.backgroundColor = '#ccffcc';
-        } else if (completedTasks === 0) {
-            cell.textContent = '未入力';
-            cell.style.backgroundColor = '#e0e0e0';
-        } else {
-            const percentage = Math.round((completedTasks / totalTasks) * 100);
-            cell.textContent = `${percentage}%`;
-            cell.style.backgroundColor = '#ffff99';
+        cell.textContent = monthData.status;
+        switch (monthData.status) {
+            case '月次完了':
+                cell.style.backgroundColor = '#ccffcc';
+                break;
+            case '未入力':
+                cell.style.backgroundColor = '#e0e0e0';
+                break;
+            case '作業中':
+                cell.style.backgroundColor = '#ffff99';
+                break;
+            default:
+                cell.style.backgroundColor = '#f0f0f0';
+                break;
         }
     }
 
      function updateMonthlyStatus(monthData, taskNames) {
+        const totalTasks = taskNames.length;
+        if (totalTasks === 0) {
+            monthData.status = '-';
+        } else {
+            const completedTasks = taskNames.filter(task => monthData.tasks[task]?.checked).length;
+            if (completedTasks === totalTasks) {
+                monthData.status = '月次完了';
+            } else if (completedTasks === 0) {
+                monthData.status = '未入力';
+            } else {
+                monthData.status = '作業中';
+            }
+        }
+
         const monthIndex = monthsToDisplay.findIndex(m => m === monthData.month);
         if (monthIndex === -1) return;
 
         const statusRow = detailsTableBody.querySelector('tr:last-child');
         if(!statusRow) return;
         const statusCell = statusRow.cells[monthIndex + 1];
-        updateStatusCell(statusCell, monthData, allTaskNames);
+        updateStatusCell(statusCell, monthData);
     }
 
     // --- Helper Functions ---
