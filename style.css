@@ -1050,3 +1050,84 @@ button:active {
 .delete-btn:hover {
     background-color: #c9302c;
 }
+
+/* === 削除確認モーダル === */
+.modal-client-info {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #007bff;
+}
+
+.modal-client-info p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.modal-client-info strong {
+    font-weight: bold;
+    color: #495057;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.cancel-btn {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.cancel-btn:hover {
+    background-color: #5a6268;
+}
+
+.confirm-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.confirm-btn:hover {
+    background-color: #c82333;
+}
+
+/* === 関与終了事業者のスタイル === */
+.inactive-client {
+    opacity: 0.6;
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
+}
+
+.inactive-client td {
+    color: #6c757d !important;
+}
+
+.inactive-client a {
+    color: #6c757d !important;
+}
+
+/* 関与終了マーク */
+.inactive-badge {
+    display: inline-block;
+    background-color: #6c757d;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
