@@ -660,11 +660,11 @@ def init_db_command():
         default_tasks_data = [
             {
                 "accounting_method": "記帳代行",
-                "tasks": ["受付", "入力確認", "不明点解消", "先生へ報告"]
+                "tasks": ["受付", "入力確認","担当者チェック", "不明点解消", "先生へ報告"]
             },
             {
                 "accounting_method": "自計",
-                "tasks": ["データ受領", "入力確認", "不明点解消", "先生へ報告"]
+                "tasks": ["データ受領", "担当者チェック", "不明点解消", "先生へ報告"]
             }
         ]
         for data in default_tasks_data:
