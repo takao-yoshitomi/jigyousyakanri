@@ -1081,13 +1081,106 @@ document.addEventListener('DOMContentLoaded', async () => {
         buttonsContainer.appendChild(syncButton);
         buttonsContainer.appendChild(propagateButton);
         buttonsContainer.appendChild(finalizeButton);
-        
+
+        const exportButton = document.createElement('button');
+        exportButton.innerHTML = `
+            <span>📄</span>
+            <span>CSVエクスポート</span>
+        `;
+        exportButton.className = 'accordion-button export-button';
+        exportButton.style.background = '#607D8B';
+        exportButton.addEventListener('click', exportClientDataToCSV);
+        buttonsContainer.appendChild(exportButton);
+
         accordionContent.appendChild(buttonsContainer);
         accordionContainer.appendChild(accordionHeader);
         accordionContainer.appendChild(accordionContent);
         
         // Add container to body for absolute positioning
         document.body.appendChild(accordionContainer);
+    }
+
+    // --- CSV Export Logic ---
+    function exportClientDataToCSV() {
+        if (!clientDetails) {
+            alert('クライアントデータが読み込まれていません。');
+            return;
+        }
+
+        const headers = ['No.', '事業者名', '月', 'タスク名', 'チェック状態', 'タスクごとのメモ', '月次URL', '月次メモ'];
+        const rows = [];
+
+        // Get all task names for the currently selected year
+        const currentTasks = clientDetails.custom_tasks_by_year[currentYearSelection] || [];
+
+        // Iterate over each month displayed on the screen
+        monthsToDisplay.forEach(monthStr => {
+            const monthData = findOrCreateMonthlyTask(clientDetails, monthStr);
+            
+            // Iterate over each task defined for the current year
+            currentTasks.forEach(taskName => {
+                const taskData = findOrCreateTask(monthData, taskName);
+                const row = {
+                    no: clientDetails.id,
+                    name: clientDetails.name,
+                    month: monthStr,
+                    taskName: taskName,
+                    checked: taskData.checked ? 'TRUE' : 'FALSE',
+                    taskNote: taskData.note || '',
+                    monthlyUrl: monthData.url || '',
+                    monthlyMemo: monthData.memo || ''
+                };
+                rows.push(row);
+            });
+        });
+
+        if (rows.length === 0) {
+            alert('エクスポートするデータがありません。');
+            return;
+        }
+
+        const csvContent = [headers.join(',')] 
+            .concat(rows.map(row => 
+                headers.map(header => {
+                    // Map header to the correct key in the row object
+                    const keyMap = {
+                        'No.': 'no',
+                        '事業者名': 'name',
+                        '月': 'month',
+                        'タスク名': 'taskName',
+                        'チェック状態': 'checked',
+                        'タスクごとのメモ': 'taskNote',
+                        '月次URL': 'monthlyUrl',
+                        '月次メモ': 'monthlyMemo'
+                    };
+                    const key = keyMap[header];
+                    let cell = row[key] === null || row[key] === undefined ? '' : String(row[key]);
+                    // Escape quotes and wrap in quotes if it contains comma, newline or quote
+                    if (/[,"\n]/.test(cell)) {
+                        cell = '"' + cell.replace(/"/g, '""') + '"';
+                    }
+                    return cell;
+                }).join(',')
+            )).join('\n');
+
+        downloadCSV(csvContent);
+    }
+
+    function downloadCSV(csvContent) {
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        
+        const today = new Date();
+        const dateStr = `${today.getFullYear()}${(today.getMonth() + 1).toString().padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}`;
+        const filename = `client_${clientDetails.id}_${dateStr}.csv`;
+
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     // --- Run Application ---
