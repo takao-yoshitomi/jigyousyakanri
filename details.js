@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('details.js: DOMContentLoaded started');
+    
     // --- DOM Element Selectors ---
     const clientInfoArea = document.getElementById('client-info-area');
     const detailsTableHead = document.querySelector('#details-table thead');

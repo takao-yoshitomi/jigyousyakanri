@@ -43,6 +43,7 @@ class Client(db.Model):
     staff_id = db.Column(db.Integer, db.ForeignKey('staffs.id'), nullable=False)
     accounting_method = db.Column(db.String(255))
     status = db.Column(db.String(255))
+    is_inactive = db.Column(db.Boolean, default=False, nullable=False)
     custom_tasks_by_year = db.Column(db.JSON, default={})
     finalized_years = db.Column(db.JSON, default=[])
     monthly_tasks = db.relationship('MonthlyTask', backref='client', lazy=True, cascade="all, delete-orphan")
@@ -57,6 +58,7 @@ class Client(db.Model):
             'staff_name': self.staff.name if self.staff else None,
             'accounting_method': self.accounting_method,
             'status': self.status,
+            'is_inactive': self.is_inactive,
             'unattendedMonths': 'N/A', # To be calculated later
             'monthlyProgress': 'N/A', # To be calculated later
             'updated_at': self.updated_at.astimezone(timezone.utc).isoformat() if self.updated_at else None,
@@ -940,7 +942,8 @@ def init_db_command():
             'highlight_yellow_color': '#FFFF99',
             'highlight_red_threshold': 6,
             'highlight_red_color': '#FFCDD2',
-            'font_family': '' # Default font family
+            'font_family': '', # Default font family
+            'hide_inactive_clients': False # 関与終了クライアントを非表示にするかどうか
         }
         for key, value in initial_settings.items():
             setting = Setting(key=key, value=value)
@@ -948,6 +951,60 @@ def init_db_command():
         db.session.commit()
 
         print("Database initialized and seeded with initial data.")
+
+# --- Client Status Management API Endpoints ---
+
+@app.route('/api/clients/<int:client_id>/set-inactive', methods=['PUT'])
+def set_client_inactive(client_id):
+    """関与終了: クライアントを非アクティブに設定"""
+    try:
+        with db.session.begin():
+            client = Client.query.with_for_update().filter_by(id=client_id).first()
+            
+            if not client:
+                return jsonify({'error': 'Client not found'}), 404
+            
+            client.is_inactive = True
+            client.updated_at = datetime.now(timezone.utc)
+            db.session.flush()  # Ensure changes are persisted
+        
+        return jsonify({
+            'message': f'クライアント「{client.name}」を関与終了にしました',
+            'client': client.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error setting client inactive: {str(e)}")
+        return jsonify({'error': 'Failed to set client inactive'}), 500
+
+@app.route('/api/clients/<int:client_id>', methods=['DELETE'])
+def delete_client(client_id):
+    """削除: クライアントを完全に削除"""
+    try:
+        with db.session.begin():
+            client = Client.query.with_for_update().filter_by(id=client_id).first()
+            
+            if not client:
+                return jsonify({'error': 'Client not found'}), 404
+            
+            client_name = client.name
+            
+            # 編集セッションがあれば削除
+            EditingSession.query.filter_by(client_id=client_id).delete()
+            
+            # 関連する月次タスクは cascade="all, delete-orphan" により自動削除される
+            db.session.delete(client)
+            db.session.flush()  # Ensure changes are persisted
+        
+        return jsonify({
+            'message': f'クライアント「{client_name}」を完全に削除しました'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting client: {str(e)}")
+        return jsonify({'error': 'Failed to delete client'}), 500
 
 
 if __name__ == '__main__':

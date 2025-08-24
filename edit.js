@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('edit.js: DOMContentLoaded started');
+    
     // --- DOM Element Selectors ---
     const pageTitle = document.querySelector('h1');
     const clientNameDisplay = document.getElementById('client-name-display');
@@ -7,8 +9,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const staffSelect = document.getElementById('staff-select');
     const fiscalMonthSelect = document.getElementById('fiscal-month');
     const accountingMethodSelect = document.getElementById('accounting-method');
-    const statusSelect = document.getElementById('status-select'); // 追加
     const saveButton = document.getElementById('save-button');
+    // 削除関連の要素（存在しない場合はnull）
+    const inactiveButton = document.getElementById('inactive-button');
+    const deleteButton = document.getElementById('delete-button');
+    const deleteModal = document.getElementById('delete-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
+    const modalClientNo = document.getElementById('modal-client-no');
+    const modalClientName = document.getElementById('modal-client-name');
+    const modalCancel = document.getElementById('modal-cancel');
+    const modalConfirm = document.getElementById('modal-confirm');
 
     // --- State Variables ---
     const API_BASE_URL = 'http://localhost:5001/api';
@@ -29,6 +40,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             initializeAllCustomDropdowns();
             saveButton.addEventListener('click', saveDataHandler);
+            
+            // 削除機能は編集モードでのみ有効（かつ要素が存在する場合のみ）
+            if (!isNewMode && inactiveButton && deleteButton && deleteModal) {
+                inactiveButton.addEventListener('click', () => showDeleteModal('inactive'));
+                deleteButton.addEventListener('click', () => showDeleteModal('delete'));
+                
+                if (modalCancel && modalConfirm) {
+                    modalCancel.addEventListener('click', hideDeleteModal);
+                    modalConfirm.addEventListener('click', handleModalConfirm);
+                }
+                
+                // ESCキーでモーダルを閉じる
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && deleteModal.style.display === 'flex') {
+                        hideDeleteModal();
+                    }
+                });
+            } else if (isNewMode) {
+                // 新規作成モードでは削除ボタンを非表示
+                const dangerZone = document.querySelector('.danger-zone');
+                if (dangerZone) {
+                    dangerZone.style.display = 'none';
+                }
+            }
         } catch (error) {
             console.error("Initialization failed:", error);
             pageTitle.textContent = 'エラー';
@@ -67,7 +102,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         clientNameDisplay.style.display = 'none';
         clientNoInput.readOnly = false;
         populateStaffDropdown();
-        statusSelect.value = '未着手'; // 新規作成時のデフォルト
     }
 
     async function initializeEditMode() {
@@ -83,7 +117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             fiscalMonthSelect.value = `${currentClient.fiscal_month}月`;
             accountingMethodSelect.value = currentClient.accounting_method;
-            statusSelect.value = currentClient.status; // 編集時にステータスを設定
 
         } else {
             pageTitle.textContent = 'エラー';
@@ -130,7 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             staff_id: parseInt(staffSelect.value),
             fiscal_month: parseInt(fiscalMonthSelect.value.replace('月', '')),
             accounting_method: accountingMethodSelect.value,
-            status: statusSelect.value, // statusをリクエストに追加
+            status: currentClient ? currentClient.status : '未着手'
         };
 
         if (isNewMode && !clientNoValue) {
@@ -186,6 +219,78 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert(`エラー: ${error.message}`);
             saveButton.disabled = false;
             saveButton.textContent = '保存';
+        }
+    }
+
+    // --- Delete and Inactive Functions ---
+    let currentAction = null; // 'inactive' or 'delete'
+    
+    function showDeleteModal(action) {
+        if (!deleteModal || !modalTitle || !modalMessage || !modalConfirm || !modalClientNo || !modalClientName) {
+            console.error('削除モーダル要素が見つかりません');
+            return;
+        }
+        
+        currentAction = action;
+        
+        if (action === 'inactive') {
+            modalTitle.textContent = '関与終了の確認';
+            modalMessage.textContent = 'この事業者を関与終了にしますか？（データは保持され、設定により非表示にできます）';
+            modalConfirm.textContent = '関与終了';
+            modalConfirm.style.backgroundColor = '#f0ad4e';
+        } else if (action === 'delete') {
+            modalTitle.textContent = '削除の確認';
+            modalMessage.textContent = 'この事業者を完全に削除しますか？（この操作は取り消せません）';
+            modalConfirm.textContent = '削除';
+            modalConfirm.style.backgroundColor = '#d9534f';
+        }
+        
+        modalClientNo.textContent = currentClient.id;
+        modalClientName.textContent = currentClient.name;
+        deleteModal.style.display = 'flex';
+    }
+    
+    function hideDeleteModal() {
+        if (deleteModal) {
+            deleteModal.style.display = 'none';
+        }
+        currentAction = null;
+    }
+    
+    async function handleModalConfirm() {
+        if (!currentAction) return;
+        
+        modalConfirm.disabled = true;
+        const originalText = modalConfirm.textContent;
+        modalConfirm.textContent = '実行中...';
+        
+        try {
+            let response;
+            if (currentAction === 'inactive') {
+                response = await fetch(`${API_BASE_URL}/clients/${clientId}/set-inactive`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } else if (currentAction === 'delete') {
+                response = await fetch(`${API_BASE_URL}/clients/${clientId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || '操作に失敗しました');
+            }
+            
+            const result = await response.json();
+            alert(result.message);
+            window.location.href = 'index.html';
+            
+        } catch (error) {
+            alert(`エラー: ${error.message}`);
+            modalConfirm.disabled = false;
+            modalConfirm.textContent = originalText;
         }
     }
 

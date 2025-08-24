@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const yellowColorInput = document.getElementById('yellow-color');
     const redColorInput = document.getElementById('red-color');
     const fontFamilySelect = document.getElementById('font-family-select');
+    const hideInactiveClientsCheckbox = document.getElementById('hide-inactive-clients');
     
     // Data I/O buttons are disabled for now
     // const exportDataButton = document.getElementById('export-data-button');
@@ -326,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         yellowColorInput.value = appSettings.highlight_yellow_color || '#FFFF99';
         redColorInput.value = appSettings.highlight_red_color || '#FFCDD2';
         fontFamilySelect.value = appSettings.font_family || ''; // Set current font family
+        hideInactiveClientsCheckbox.checked = appSettings.hide_inactive_clients || false;
 
         basicSettingsModal.style.display = 'block';
     }
@@ -336,7 +338,8 @@ document.addEventListener('DOMContentLoaded', () => {
             highlight_yellow_color: yellowColorInput.value,
             highlight_red_threshold: parseInt(redThresholdSelect.value),
             highlight_red_color: redColorInput.value,
-            font_family: fontFamilySelect.value // Save selected font family
+            font_family: fontFamilySelect.value, // Save selected font family
+            hide_inactive_clients: hideInactiveClientsCheckbox.checked
         };
 
         try {
@@ -445,8 +448,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const staffMatch = staffFilterValue === '' || client.staff_name === staffFilterValue;
             const monthMatch = monthFilterValue === '' || `${client.fiscal_month}月` === monthFilterValue;
+            
+            // 関与終了クライアントのフィルタリング
+            const hideInactive = appSettings.hide_inactive_clients || false;
+            const inactiveMatch = !hideInactive || !client.is_inactive;
 
-            return textMatch && staffMatch && monthMatch;
+            return textMatch && staffMatch && monthMatch && inactiveMatch;
         });
 
         // Sorting logic
@@ -515,6 +522,11 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatusBackgroundColor(customSelectWrapper, client.status);
 
             row.insertCell().innerHTML = `<a href="edit.html?no=${client.id}">編集</a>`;
+            
+            // 関与終了クライアントに特別なクラスを追加
+            if (client.is_inactive) {
+                row.classList.add('inactive-client');
+            }
         });
     }
 
