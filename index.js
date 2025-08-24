@@ -436,7 +436,6 @@ document.addEventListener('DOMContentLoaded', () => {
             row.insertCell().textContent = client.id;
             row.insertCell().innerHTML = `<a href="details.html?no=${client.id}" class="client-name-link">${client.name}</a>`;
             row.insertCell().textContent = `${client.fiscal_month}月`;
-            row.insertCell().textContent = client.unattendedMonths;
             const unattendedMonthsCell = row.insertCell();
             unattendedMonthsCell.textContent = client.unattendedMonths;
             unattendedMonthsCell.style.backgroundColor = ''; // Reset background
