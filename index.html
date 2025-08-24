@@ -18,6 +18,7 @@
                 <button id="manage-staff-button" class="accordion-button">担当者管理</button>
                 <button id="add-client-button" class="accordion-button">顧問先追加</button>
                 <hr>
+                <button id="basic-settings-button" class="accordion-button">基本設定</button>
                 <button id="default-tasks-settings-button" class="accordion-button">項目の初期値の設定</button>
                 <button id="export-data-button" class="accordion-button">エクスポート</button>
                 <button id="import-data-button" class="accordion-button">インポート</button>
@@ -113,6 +114,34 @@
             <div class="modal-buttons">
                 <button id="save-default-tasks-button">保存</button>
                 <button id="cancel-default-tasks-button">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Basic Settings Modal -->
+    <div id="basic-settings-modal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-button">&times;</span>
+            <h2>基本設定</h2>
+            <div class="settings-form">
+                <div class="form-group">
+                    <label for="yellow-threshold">背景を黄色にする未入力期間:</label>
+                    <select id="yellow-threshold">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                    <input type="color" id="yellow-color" value="#FFFF99">
+                </div>
+                <div class="form-group">
+                    <label for="red-threshold">背景を赤色にする未入力期間:</label>
+                    <select id="red-threshold">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                    <input type="color" id="red-color" value="#FFCDD2">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button id="save-basic-settings-button">保存</button>
+                <button id="cancel-basic-settings-button">キャンセル</button>
             </div>
         </div>
     </div>

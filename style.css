@@ -876,6 +876,44 @@ button:active {
     border-radius: 4px;
 }
 
+/* Basic Settings Modal Styles */
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.settings-form .form-group {
+    display: grid;
+    grid-template-columns: 1fr auto auto; /* Label, Select, Color Picker */
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    background-color: #fefefe;
+}
+
+.settings-form label {
+    font-weight: bold;
+    color: #333;
+}
+
+.settings-form select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.settings-form input[type="color"] {
+    width: 40px;
+    height: 40px;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
 /* Zoom Slider Styles */
 #zoom-container {
     position: fixed;

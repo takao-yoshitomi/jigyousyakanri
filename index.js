@@ -25,6 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const tasksKityoContainer = document.getElementById('tasks-kityo');
     const tasksJikeiContainer = document.getElementById('tasks-jikei');
     const defaultTasksContainer = defaultTasksModal.querySelector('.default-tasks-container');
+
+    // Basic Settings Modal elements
+    const basicSettingsModal = document.getElementById('basic-settings-modal');
+    const openBasicSettingsModalButton = document.getElementById('basic-settings-button');
+    const closeBasicSettingsModalButton = basicSettingsModal.querySelector('.close-button');
+    const saveBasicSettingsButton = document.getElementById('save-basic-settings-button');
+    const cancelBasicSettingsButton = document.getElementById('cancel-basic-settings-button');
+    const yellowThresholdSelect = document.getElementById('yellow-threshold');
+    const redThresholdSelect = document.getElementById('red-threshold');
+    const yellowColorInput = document.getElementById('yellow-color');
+    const redColorInput = document.getElementById('red-color');
     
     // Data I/O buttons are disabled for now
     // const exportDataButton = document.getElementById('export-data-button');
@@ -39,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let originalStaffsState = [];
     let currentEditingStaffs = [];
     let defaultTasks = {}; // State for default tasks
+    let appSettings = {}; // State for application settings
 
     const API_BASE_URL = 'http://localhost:5001/api';
 
@@ -59,12 +71,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initializeApp() {
         setupTableHeaders();
         addEventListeners();
+        populateMonthThresholds(); // Populate month dropdowns
         
         try {
             // Fetch data from backend
-            [clients, staffs] = await Promise.all([
+            [clients, staffs, appSettings] = await Promise.all([
                 fetchClients(),
-                fetchStaffs()
+                fetchStaffs(),
+                fetchSettings()
             ]);
 
             populateFilters();
@@ -149,9 +163,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        addStaffButton.addEventListener('click', addStaff);
         saveStaffButton.addEventListener('click', saveStaff);
+        staffListContainer.addEventListener('click', handleStaffListClick);
         staffListContainer.addEventListener('input', handleStaffListInput);
+
+        // Basic Settings Modal Listeners
+        openBasicSettingsModalButton.addEventListener('click', openBasicSettingsModal);
+        closeBasicSettingsModalButton.addEventListener('click', () => basicSettingsModal.style.display = 'none');
+        cancelBasicSettingsButton.addEventListener('click', () => basicSettingsModal.style.display = 'none');
+        saveBasicSettingsButton.addEventListener('click', saveBasicSettings);
 
         // Accordion and Modal Listeners
         accordionHeader.addEventListener('click', toggleAccordion);
@@ -267,6 +287,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Basic Settings Modal Logic ---
+
+    function openBasicSettingsModal() {
+        // Populate current settings
+        yellowThresholdSelect.value = appSettings.highlight_yellow_threshold || 3;
+        redThresholdSelect.value = appSettings.highlight_red_threshold || 6;
+        yellowColorInput.value = appSettings.highlight_yellow_color || '#FFFF99';
+        redColorInput.value = appSettings.highlight_red_color || '#FFCDD2';
+
+        basicSettingsModal.style.display = 'block';
+    }
+
+    async function saveBasicSettings() {
+        const updatedSettings = {
+            highlight_yellow_threshold: parseInt(yellowThresholdSelect.value),
+            highlight_yellow_color: yellowColorInput.value,
+            highlight_red_threshold: parseInt(redThresholdSelect.value),
+            highlight_red_color: redColorInput.value
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedSettings)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save settings');
+            }
+
+            appSettings = updatedSettings; // Update local state
+            renderClients(); // Re-render clients to apply new colors
+            alert('基本設定を保存しました。');
+            basicSettingsModal.style.display = 'none';
+        } catch (error) {
+            console.error(error);
+            alert('設定の保存に失敗しました。');
+        }
+    }
+
     // --- Data Fetching Functions ---
     async function fetchClients() {
         try {
@@ -293,6 +354,40 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Failed to fetch staffs:", error);
             alert("担当者情報の読み込みに失敗しました。");
             return [];
+        }
+    }
+
+    async function fetchSettings() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/settings`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error("Failed to fetch settings:", error);
+            alert("設定の読み込みに失敗しました。デフォルト値を使用します。");
+            // Return default settings if fetch fails
+            return {
+                highlight_yellow_threshold: 3,
+                highlight_yellow_color: '#FFFF99',
+                highlight_red_threshold: 6,
+                highlight_red_color: '#FFCDD2'
+            };
+        }
+    }
+
+    function populateMonthThresholds() {
+        for (let i = 1; i <= 12; i++) {
+            const optionYellow = document.createElement('option');
+            optionYellow.value = i;
+            optionYellow.textContent = `${i}ヶ月`;
+            yellowThresholdSelect.appendChild(optionYellow);
+
+            const optionRed = document.createElement('option');
+            optionRed.value = i;
+            optionRed.textContent = `${i}ヶ月`;
+            redThresholdSelect.appendChild(optionRed);
         }
     }
 
@@ -342,6 +437,19 @@ document.addEventListener('DOMContentLoaded', () => {
             row.insertCell().innerHTML = `<a href="details.html?no=${client.id}" class="client-name-link">${client.name}</a>`;
             row.insertCell().textContent = `${client.fiscal_month}月`;
             row.insertCell().textContent = client.unattendedMonths;
+            const unattendedMonthsCell = row.insertCell();
+            unattendedMonthsCell.textContent = client.unattendedMonths;
+            unattendedMonthsCell.style.backgroundColor = ''; // Reset background
+
+            // Apply highlighting based on settings
+            const months = parseInt(client.unattendedMonths.replace('ヶ月', ''));
+            if (!isNaN(months)) {
+                if (months >= appSettings.highlight_red_threshold) {
+                    unattendedMonthsCell.style.backgroundColor = appSettings.highlight_red_color;
+                } else if (months >= appSettings.highlight_yellow_threshold) {
+                    unattendedMonthsCell.style.backgroundColor = appSettings.highlight_yellow_color;
+                }
+            }
             row.insertCell().textContent = client.monthlyProgress;
             const updatedAtCell = row.insertCell();
             if (client.updated_at) {

@@ -103,6 +103,19 @@ class DefaultTask(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
+class Setting(db.Model):
+    __tablename__ = 'settings'
+    key = db.Column(db.String(255), primary_key=True)
+    value = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    def to_dict(self):
+        return {
+            'key': self.key,
+            'value': self.value
+        }
+
 # --- API Endpoints ---
 
 @app.route('/api/clients', methods=['GET'])
@@ -457,6 +470,43 @@ def update_default_tasks():
         return jsonify({"error": "Could not update default tasks"}), 500
 
 
+# --- Settings Management API ---
+
+@app.route('/api/settings', methods=['GET'])
+def get_settings():
+    try:
+        settings = Setting.query.all()
+        return jsonify({s.key: s.value for s in settings})
+    except Exception as e:
+        print(f"Error fetching settings: {e}")
+        return jsonify({"error": "Could not fetch settings"}), 500
+
+@app.route('/api/settings', methods=['PUT'])
+def update_settings():
+    from flask import request
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid data"}), 400
+
+    try:
+        for key, value in data.items():
+            setting_entry = Setting.query.filter_by(key=key).first()
+            if setting_entry:
+                setting_entry.value = value
+                flag_modified(setting_entry, "value")
+            else:
+                # Create new setting if it doesn't exist
+                new_setting = Setting(key=key, value=value)
+                db.session.add(new_setting)
+        
+        db.session.commit()
+        return jsonify({"message": "Settings updated successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating settings: {e}")
+        return jsonify({"error": "Could not update settings"}), 500
+
+
 @app.route('/')
 def hello_world():
     return 'Hello from the backend! The database is connected.'
@@ -732,6 +782,18 @@ def init_db_command():
             db.session.add(client)
 
         db.session.commit()
+        # --- Initial Settings ---
+        initial_settings = {
+            'highlight_yellow_threshold': 3,
+            'highlight_yellow_color': '#FFFF99',
+            'highlight_red_threshold': 6,
+            'highlight_red_color': '#FFCDD2'
+        }
+        for key, value in initial_settings.items():
+            setting = Setting(key=key, value=value)
+            db.session.add(setting)
+        db.session.commit()
+
         print("Database initialized and seeded with initial data.")
 
 
