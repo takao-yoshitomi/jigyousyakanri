@@ -13,6 +13,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pageOverlay = document.createElement('div');
     pageOverlay.className = 'page-overlay';
 
+    // --- Zoom Slider Elements ---
+    const zoomSlider = document.getElementById('zoom-slider');
+    const zoomValue = document.getElementById('zoom-value');
+    const mainContainer = document.querySelector('.container');
+
     // --- State Variables ---
     const API_BASE_URL = 'http://localhost:5001/api';
     const urlParams = new URLSearchParams(window.location.search);
@@ -296,6 +301,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         yearFilter.addEventListener('change', (event) => {
             currentYearSelection = event.target.value;
             renderDetails();
+            // Update accordion finalize button when year changes
+            if (window.updateFinalizeButton) {
+                window.updateFinalizeButton();
+            }
         });
         editTasksButton.addEventListener('click', openTaskEditModal);
         saveChangesButton.addEventListener('click', performSave);
@@ -329,6 +338,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 e.preventDefault();
                 e.returnValue = '';
             }
+        });
+
+        // Zoom Slider Event Listener
+        zoomSlider.addEventListener('input', (e) => {
+            const scale = e.target.value / 100;
+            mainContainer.style.zoom = scale;
+            zoomValue.textContent = `${e.target.value}%`;
         });
     }
 
@@ -782,32 +798,98 @@ document.addEventListener('DOMContentLoaded', async () => {
         return response.json();
     }
 
-    // Add management buttons to the UI
+    // Add accordion management menu to the UI
     function addManagementButtons() {
-        // Create container for management buttons
-        const buttonContainer = document.createElement('div');
-        buttonContainer.className = 'management-buttons';
-        buttonContainer.style.cssText = `
-            margin: 10px 0;
+        // Hide the original finalize button since it's now in the accordion
+        if (finalizeYearButton) {
+            finalizeYearButton.style.display = 'none';
+        }
+
+        // Create accordion container
+        const accordionContainer = document.createElement('div');
+        accordionContainer.className = 'accordion-container';
+        accordionContainer.style.cssText = `
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 280px;
+            z-index: 1000;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        `;
+
+        // Create accordion header
+        const accordionHeader = document.createElement('button');
+        accordionHeader.className = 'accordion-header';
+        accordionHeader.innerHTML = `
+            <span>📋 データ管理メニュー</span>
+            <span class="accordion-icon">▼</span>
+        `;
+        accordionHeader.style.cssText = `
+            width: 100%;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border: none;
+            text-align: left;
+            cursor: pointer;
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            transition: background-color 0.2s;
+        `;
+
+        // Create accordion content
+        const accordionContent = document.createElement('div');
+        accordionContent.className = 'accordion-content';
+        accordionContent.style.cssText = `
+            display: none;
+            padding: 16px;
+            background: #fff;
+            border-top: 1px solid #ddd;
+        `;
+
+        // Create buttons container inside accordion
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         `;
 
         // Data sync check button
         const syncButton = document.createElement('button');
-        syncButton.textContent = 'データ整合性チェック';
-        syncButton.className = 'sync-check-button';
+        syncButton.innerHTML = `
+            <span>🔄</span>
+            <span>データ整合性チェック</span>
+        `;
+        syncButton.className = 'accordion-button sync-check-button';
         syncButton.style.cssText = `
-            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
             background: #2196F3;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
+            transition: background-color 0.2s;
         `;
         
+        syncButton.addEventListener('mouseover', () => {
+            syncButton.style.backgroundColor = '#1976D2';
+        });
+        
+        syncButton.addEventListener('mouseout', () => {
+            syncButton.style.backgroundColor = '#2196F3';
+        });
+
         syncButton.addEventListener('click', async () => {
             try {
                 const result = await checkCustomTasksSync();
@@ -844,17 +926,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Propagate to future years button
         const propagateButton = document.createElement('button');
-        propagateButton.textContent = '項目を翌期以降に再反映';
-        propagateButton.className = 'propagate-button';
+        propagateButton.innerHTML = `
+            <span>🔄</span>
+            <span>項目を翌期以降に再反映</span>
+        `;
+        propagateButton.className = 'accordion-button propagate-button';
         propagateButton.style.cssText = `
-            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
             background: #FF9800;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
+            transition: background-color 0.2s;
         `;
+        
+        propagateButton.addEventListener('mouseover', () => {
+            propagateButton.style.backgroundColor = '#F57C00';
+        });
+        
+        propagateButton.addEventListener('mouseout', () => {
+            propagateButton.style.backgroundColor = '#FF9800';
+        });
         
         propagateButton.addEventListener('click', async () => {
             if (confirm(`${currentYearSelection}年の項目構成を翌期以降の未確定年度にすべて再反映しますか？\n（既に確定済みの年度は変更されません）`)) {
@@ -878,11 +975,119 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        buttonContainer.appendChild(syncButton);
-        buttonContainer.appendChild(propagateButton);
+        // Finalize year button
+        const finalizeButton = document.createElement('button');
+        finalizeButton.className = 'accordion-button finalize-button';
         
-        // Add container after edit tasks button
-        editTasksButton.parentNode.insertBefore(buttonContainer, editTasksButton.nextSibling);
+        // Function to update finalize button display
+        function updateFinalizeButton() {
+            const isFinalized = clientDetails.finalized_years && 
+                               clientDetails.finalized_years.includes(currentYearSelection);
+            
+            if (isFinalized) {
+                finalizeButton.innerHTML = `
+                    <span>🔓</span>
+                    <span>${currentYearSelection}年度の確定を解除</span>
+                `;
+                finalizeButton.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 10px 14px;
+                    background: #FF5722;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: background-color 0.2s;
+                `;
+                finalizeButton.onmouseover = () => {
+                    finalizeButton.style.backgroundColor = '#D84315';
+                };
+                finalizeButton.onmouseout = () => {
+                    finalizeButton.style.backgroundColor = '#FF5722';
+                };
+            } else {
+                finalizeButton.innerHTML = `
+                    <span>🔒</span>
+                    <span>${currentYearSelection}年度の項目を確定</span>
+                `;
+                finalizeButton.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 10px 14px;
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: background-color 0.2s;
+                `;
+                finalizeButton.onmouseover = () => {
+                    finalizeButton.style.backgroundColor = '#388E3C';
+                };
+                finalizeButton.onmouseout = () => {
+                    finalizeButton.style.backgroundColor = '#4CAF50';
+                };
+            }
+        }
+        
+        // Initial update
+        updateFinalizeButton();
+
+        finalizeButton.addEventListener('click', () => {
+            // Use existing finalize functionality
+            finalizeYearButton.click();
+            // Update button after action
+            setTimeout(() => {
+                updateFinalizeButton();
+            }, 100);
+        });
+        
+        // Store reference for later updates
+        window.updateFinalizeButton = updateFinalizeButton;
+
+        // Accordion toggle functionality
+        let isOpen = false;
+        accordionHeader.addEventListener('click', () => {
+            isOpen = !isOpen;
+            const icon = accordionHeader.querySelector('.accordion-icon');
+            
+            if (isOpen) {
+                accordionContent.style.display = 'block';
+                icon.textContent = '▲';
+                accordionHeader.style.backgroundColor = '#e9ecef';
+            } else {
+                accordionContent.style.display = 'none';
+                icon.textContent = '▼';
+                accordionHeader.style.backgroundColor = '#f8f9fa';
+            }
+        });
+
+        accordionHeader.addEventListener('mouseover', () => {
+            if (!isOpen) {
+                accordionHeader.style.backgroundColor = '#e9ecef';
+            }
+        });
+
+        accordionHeader.addEventListener('mouseout', () => {
+            accordionHeader.style.backgroundColor = isOpen ? '#e9ecef' : '#f8f9fa';
+        });
+
+        // Assemble the accordion
+        buttonsContainer.appendChild(syncButton);
+        buttonsContainer.appendChild(propagateButton);
+        buttonsContainer.appendChild(finalizeButton);
+        
+        accordionContent.appendChild(buttonsContainer);
+        accordionContainer.appendChild(accordionHeader);
+        accordionContainer.appendChild(accordionContent);
+        
+        // Add container to body for absolute positioning
+        document.body.appendChild(accordionContainer);
     }
 
     // --- Run Application ---

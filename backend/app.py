@@ -514,6 +514,9 @@ def propagate_tasks_to_future_years(client_id):
         source_year = data.get('source_year')
         target_years = data.get('target_years', [])
         
+        print(f"Propagate request: source_year={source_year}, target_years={target_years}")
+        print(f"Client custom_tasks_by_year: {client.custom_tasks_by_year}")
+        
         if not source_year:
             return jsonify({"error": "Source year is required"}), 400
         
@@ -522,8 +525,10 @@ def propagate_tasks_to_future_years(client_id):
         
         source_tasks = client.custom_tasks_by_year.get(source_year, [])
         
+        print(f"Source tasks for {source_year}: {source_tasks}")
+        
         if not source_tasks:
-            return jsonify({"error": "No tasks found for source year"}), 400
+            return jsonify({"error": f"No tasks found for source year {source_year}. Available years: {list(client.custom_tasks_by_year.keys())}"}), 400
         
         finalized_years = client.finalized_years or []
         propagated_to = []

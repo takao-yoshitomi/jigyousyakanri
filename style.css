@@ -779,3 +779,49 @@ button:active {
 #save-status.error {
     background-color: #dc3545; /* Red */
 }
+
+/* Zoom Slider Styles */
+#zoom-container {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(255, 255, 255, 0.247);
+    padding: 8px 8px;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(88, 88, 88, 0.2);
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+#zoom-container label {
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#zoom-slider, #zoom-value {
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+    transition: opacity 0.3s ease, width 0.3s ease, visibility 0.3s;
+}
+
+#zoom-container:hover #zoom-slider {
+    opacity: 1;
+    visibility: visible;
+    width: 200px; /* Or whatever width you prefer */
+}
+
+#zoom-container:hover #zoom-value {
+    opacity: 1;
+    visibility: visible;
+    width: auto; /* Adjust to content size */
+    min-width: 40px;
+    text-align: right;
+}
+
+#zoom-value {
+    font-weight: bold;
+}
