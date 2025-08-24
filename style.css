@@ -716,7 +716,7 @@ th[data-sort-key]:hover .sort-icon {
     background-color: #d1cfcfd8; /* 背景色を固定エリアの背景色と合わせる */
     z-index: 20; /* 他の要素より手前に表示 */
     padding-left: 20px; /* 左側に余白を追加 */
-    padding-bottom: 10px; /* 下部に少しスペース */
+    padding-bottom: -20px; /* 下部に少しスペース */
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.322); /* シャドウを追加 */
 }
 
@@ -727,7 +727,7 @@ th[data-sort-key]:hover .sort-icon {
 }
 
 #client-info-area {
-    margin-bottom: 20px; /* 下のテーブルとの間隔 */
+    margin-bottom: 5px; /* 下のテーブルとの間隔 */
     padding-bottom: 10px; /* 線と内容の間のスペース */
     border-bottom: 1px solid #ddd; /* 線 */
 }

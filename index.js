@@ -102,7 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
             { name: 'ＭＳ Ｐゴシック', value: '"ＭＳ Ｐゴシック", "MS PGothic", sans-serif' },
             { name: 'Arial', value: 'Arial, sans-serif' },
             { name: 'Verdana', value: 'Verdana, sans-serif' },
-            { name: 'Times New Roman', value: '"Times New Roman", serif' }
+            { name: 'Times New Roman', value: '"Times New Roman", serif' },
+            { name: 'BIZ UDゴシック', value: '"BIZ UDゴシック", "BIZ UDGothic", sans-serif' },
+            { name: 'UD Digi Kyokasho NK-B', value: '"UD Digi Kyokasho NK-B", sans-serif' }
         ];
 
         fontFamilySelect.innerHTML = ''; // Clear existing options
