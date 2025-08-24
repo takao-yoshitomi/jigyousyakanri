@@ -16,7 +16,7 @@
         </div>
 
         <div id="edit-form">
-            <p><strong>事業所名:</strong> <span id="client-name-display"></span></p>
+            <p><strong>事業所名:</strong> <span id="client-name-display"></span> <span id="inactive-status-badge" class="inactive-badge" style="display: none;">関与終了</span></p>
 
             <div class="form-group">
                 <label for="client-no">No.:</label>
@@ -97,6 +97,7 @@
             <div class="form-group danger-zone" style="margin-top: 40px; border-top: 2px solid #eee; padding-top: 20px; display: none;">
                 <span></span> <!-- Empty cell for label column -->
                 <div class="danger-buttons">
+                    <button id="reactivate-button" type="button" class="reactivate-btn" style="display: none;">復活</button>
                     <button id="inactive-button" type="button" class="inactive-btn">関与終了</button>
                     <button id="delete-button" type="button" class="delete-btn">削除</button>
                 </div>

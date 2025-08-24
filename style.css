@@ -1036,6 +1036,22 @@ button:active {
     background-color: #ec971f;
 }
 
+.reactivate-btn {
+    background-color: #5cb85c;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+    margin-right: 10px;
+}
+
+.reactivate-btn:hover {
+    background-color: #449d44;
+}
+
 .delete-btn {
     background-color: #d9534f;
     color: white;

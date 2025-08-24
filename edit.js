@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 削除関連の要素（存在しない場合はnull）
     const inactiveButton = document.getElementById('inactive-button');
     const deleteButton = document.getElementById('delete-button');
+    const reactivateButton = document.getElementById('reactivate-button');
+    const inactiveStatusBadge = document.getElementById('inactive-status-badge');
     const deleteModal = document.getElementById('delete-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalMessage = document.getElementById('modal-message');
@@ -20,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalClientName = document.getElementById('modal-client-name');
     const modalCancel = document.getElementById('modal-cancel');
     const modalConfirm = document.getElementById('modal-confirm');
+    
 
     // --- State Variables ---
     const API_BASE_URL = 'http://localhost:5001/api';
@@ -45,6 +48,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!isNewMode && inactiveButton && deleteButton && deleteModal) {
                 inactiveButton.addEventListener('click', () => showDeleteModal('inactive'));
                 deleteButton.addEventListener('click', () => showDeleteModal('delete'));
+                
+                // 復活ボタンがある場合はイベントリスナーを追加
+                if (reactivateButton) {
+                    reactivateButton.addEventListener('click', () => showDeleteModal('reactivate'));
+                }
                 
                 if (modalCancel && modalConfirm) {
                     modalCancel.addEventListener('click', hideDeleteModal);
@@ -118,6 +126,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dangerZone = document.querySelector('.danger-zone');
             if (dangerZone) {
                 dangerZone.style.display = 'block';
+            }
+
+            // 関与終了状態の表示制御
+            if (currentClient.is_inactive) {
+                // 関与終了バッジを表示
+                if (inactiveStatusBadge) {
+                    inactiveStatusBadge.style.display = 'inline-block';
+                }
+                
+                // ボタンの表示制御：復活ボタンを表示、関与終了ボタンを非表示
+                if (reactivateButton) {
+                    reactivateButton.style.display = 'inline-block';
+                }
+                if (inactiveButton) {
+                    inactiveButton.style.display = 'none';
+                }
+            } else {
+                // アクティブ状態：関与終了バッジを非表示、復活ボタンを非表示
+                if (inactiveStatusBadge) {
+                    inactiveStatusBadge.style.display = 'none';
+                }
+                if (reactivateButton) {
+                    reactivateButton.style.display = 'none';
+                }
+                if (inactiveButton) {
+                    inactiveButton.style.display = 'inline-block';
+                }
             }
 
         } else {
@@ -246,6 +281,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalMessage.textContent = 'この事業者を完全に削除しますか？（この操作は取り消せません）';
             modalConfirm.textContent = '削除';
             modalConfirm.style.backgroundColor = '#d9534f';
+        } else if (action === 'reactivate') {
+            modalTitle.textContent = '復活の確認';
+            modalMessage.textContent = 'この事業者を復活させますか？（関与終了状態を解除し、通常の事業者として表示されます）';
+            modalConfirm.textContent = '復活';
+            modalConfirm.style.backgroundColor = '#5cb85c';
         }
         
         modalClientNo.textContent = currentClient.id;
@@ -279,6 +319,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (currentAction === 'delete') {
                 response = await fetch(`${API_BASE_URL}/clients/${clientId}`, {
                     method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } else if (currentAction === 'reactivate') {
+                response = await fetch(`${API_BASE_URL}/clients/${clientId}/reactivate`, {
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' }
                 });
             }

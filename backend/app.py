@@ -284,6 +284,7 @@ def get_client_details(client_id):
             'staff_id': client.staff_id,
             'status': client.status,
             'accounting_method': client.accounting_method,
+            'is_inactive': client.is_inactive,
             'custom_tasks_by_year': client.custom_tasks_by_year,
             'finalized_years': client.finalized_years,
             'monthly_tasks': [task.to_dict() for task in client.monthly_tasks],
@@ -890,6 +891,32 @@ def set_client_inactive(client_id):
         db.session.rollback()
         print(f"Error setting client inactive: {e}")
         return jsonify({"error": "関与終了の設定に失敗しました"}), 500
+
+@app.route('/api/clients/<int:client_id>/reactivate', methods=['PUT'])
+def reactivate_client(client_id):
+    """Reactivate inactive client (関与終了から復活)"""
+    try:
+        # Use pessimistic locking
+        client = db.session.query(Client).filter_by(id=client_id).with_for_update().first()
+        
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
+            
+        client.is_inactive = False
+        client.updated_at = datetime.now(timezone.utc)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": f"事業者 {client.name} を復活しました",
+            "client_id": client_id,
+            "is_inactive": False
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error reactivating client: {e}")
+        return jsonify({"error": "復活の設定に失敗しました"}), 500
 
 @app.route('/api/clients/<int:client_id>', methods=['DELETE'])
 def delete_client(client_id):
