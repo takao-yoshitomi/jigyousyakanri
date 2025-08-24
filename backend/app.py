@@ -6,7 +6,7 @@ from flask_migrate import Migrate
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.exc import IntegrityError
 from flask_cors import CORS
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import click
 from dotenv import load_dotenv
 
@@ -114,6 +114,25 @@ class Setting(db.Model):
         return {
             'key': self.key,
             'value': self.value
+        }
+
+class EditingSession(db.Model):
+    __tablename__ = 'editing_sessions'
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
+    user_id = db.Column(db.String(255), nullable=False)  # For now, use IP address or session ID
+    started_at = db.Column(db.DateTime, server_default=db.func.now())
+    last_activity = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+    
+    client = db.relationship('Client', backref='editing_sessions')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'client_id': self.client_id,
+            'user_id': self.user_id,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'last_activity': self.last_activity.isoformat() if self.last_activity else None
         }
 
 # --- API Endpoints ---
@@ -278,27 +297,20 @@ def update_client_details(client_id):
     from flask import request
     from datetime import datetime, timezone
 
-    client = Client.query.get(client_id)
-    if not client:
-        return jsonify({"error": "Client not found"}), 404
-
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid data"}), 400
 
-    # --- Optimistic Locking Check ---
-    frontend_updated_at_str = data.get('updated_at')
-    if frontend_updated_at_str:
-        frontend_updated_at = datetime.fromisoformat(frontend_updated_at_str).astimezone(timezone.utc)
-        db_updated_at = client.updated_at.astimezone(timezone.utc)
-        if abs((db_updated_at - frontend_updated_at).total_seconds()) > 1:
-            return jsonify({
-                "error": "Conflict: The data has been modified by another user.",
-                "error_code": "CONFLICT"
-            }), 409
-
-    # --- Update Logic ---
+    # --- Pessimistic Locking Implementation ---
     try:
+        # Use pessimistic locking to prevent concurrent modifications
+        client = Client.query.filter_by(id=client_id).with_for_update().first()
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
+
+        print(f"DEBUG: Acquired pessimistic lock for client {client_id}")
+
+        # --- Update Logic ---
         # Update client's own fields
         client.name = data.get('name', client.name)
         client.fiscal_month = data.get('fiscal_month', client.fiscal_month)
@@ -315,11 +327,12 @@ def update_client_details(client_id):
             for task_data in data['monthly_tasks']:
                 task_id = task_data.get('id')
                 if task_id:
-                    task = MonthlyTask.query.get(task_id)
+                    # Use pessimistic locking for monthly tasks as well
+                    task = MonthlyTask.query.filter_by(id=task_id).with_for_update().first()
                     if task and task.client_id == client.id:
                         task.tasks = task_data.get('tasks', task.tasks)
                         flag_modified(task, "tasks")
-                        task.status = task_data.get('status', task.status) # <-- ADD THIS LINE
+                        task.status = task_data.get('status', task.status)
                         task.memo = task_data.get('memo', task.memo)
                         task.url = task_data.get('url', task.url)
                 else:
@@ -517,15 +530,15 @@ def update_custom_tasks_for_year(client_id, year):
     from flask import request
     from datetime import datetime, timezone
     
-    client = Client.query.get(client_id)
-    if not client:
-        return jsonify({"error": "Client not found"}), 404
-    
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid data"}), 400
     
     try:
+        # Use pessimistic locking for custom tasks update
+        client = Client.query.filter_by(id=client_id).with_for_update().first()
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
         # Initialize custom_tasks_by_year if it doesn't exist
         if not client.custom_tasks_by_year:
             client.custom_tasks_by_year = {}
@@ -595,15 +608,15 @@ def cleanup_deleted_tasks(client_id):
     from flask import request
     from datetime import datetime, timezone
     
-    client = Client.query.get(client_id)
-    if not client:
-        return jsonify({"error": "Client not found"}), 404
-    
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid data"}), 400
     
     try:
+        # Use pessimistic locking for cleanup operation
+        client = Client.query.filter_by(id=client_id).with_for_update().first()
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
         year = data.get('year')
         deleted_tasks = data.get('deleted_tasks', [])
         
@@ -613,7 +626,8 @@ def cleanup_deleted_tasks(client_id):
         cleaned_count = 0
         
         # Remove deleted tasks from all monthly_tasks for this client
-        monthly_tasks = MonthlyTask.query.filter_by(client_id=client_id).all()
+        # Use pessimistic locking for monthly tasks as well
+        monthly_tasks = MonthlyTask.query.filter_by(client_id=client_id).with_for_update().all()
         
         for monthly_task in monthly_tasks:
             if monthly_task.tasks:
@@ -648,15 +662,15 @@ def propagate_tasks_to_future_years(client_id):
     from flask import request
     from datetime import datetime, timezone
     
-    client = Client.query.get(client_id)
-    if not client:
-        return jsonify({"error": "Client not found"}), 404
-    
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid data"}), 400
     
     try:
+        # Use pessimistic locking for propagate operation
+        client = Client.query.filter_by(id=client_id).with_for_update().first()
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
         source_year = data.get('source_year')
         target_years = data.get('target_years', [])
         
@@ -708,6 +722,144 @@ def propagate_tasks_to_future_years(client_id):
         db.session.rollback()
         print(f"Error propagating tasks: {e}")
         return jsonify({"error": "Could not propagate tasks"}), 500
+
+# --- Editing Session Management API ---
+
+@app.route('/api/clients/<int:client_id>/editing-session', methods=['POST'])
+def start_editing_session(client_id):
+    from flask import request
+    from datetime import datetime, timezone
+    
+    data = request.get_json() or {}
+    user_id = data.get('user_id', request.remote_addr)  # Use IP as fallback
+    
+    try:
+        # Check if client exists
+        client = Client.query.get(client_id)
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
+        
+        # Clean up expired sessions (older than 30 minutes)
+        expired_time = datetime.now(timezone.utc) - timedelta(minutes=30)
+        EditingSession.query.filter(
+            EditingSession.last_activity < expired_time
+        ).delete()
+        
+        # Check if there's an active editing session by another user
+        active_session = EditingSession.query.filter_by(client_id=client_id).first()
+        if active_session and active_session.user_id != user_id:
+            return jsonify({
+                "status": "editing_by_other",
+                "message": "Client is currently being edited by another user",
+                "editor": active_session.user_id,
+                "started_at": active_session.started_at.isoformat()
+            }), 200
+        
+        # If same user, update last activity
+        if active_session and active_session.user_id == user_id:
+            active_session.last_activity = datetime.now(timezone.utc)
+        else:
+            # Create new editing session
+            new_session = EditingSession(
+                client_id=client_id,
+                user_id=user_id
+            )
+            db.session.add(new_session)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "status": "editing_allowed",
+            "message": "Editing session started successfully",
+            "user_id": user_id
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error starting editing session: {e}")
+        return jsonify({"error": "Could not start editing session"}), 500
+
+@app.route('/api/clients/<int:client_id>/editing-session', methods=['PUT'])
+def update_editing_session(client_id):
+    from flask import request
+    from datetime import datetime, timezone
+    
+    data = request.get_json() or {}
+    user_id = data.get('user_id', request.remote_addr)
+    
+    try:
+        session = EditingSession.query.filter_by(
+            client_id=client_id, 
+            user_id=user_id
+        ).first()
+        
+        if session:
+            session.last_activity = datetime.now(timezone.utc)
+            db.session.commit()
+            return jsonify({"message": "Session updated"}), 200
+        else:
+            return jsonify({"error": "No active session found"}), 404
+            
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating editing session: {e}")
+        return jsonify({"error": "Could not update session"}), 500
+
+@app.route('/api/clients/<int:client_id>/editing-session', methods=['DELETE'])
+def end_editing_session(client_id):
+    from flask import request
+    
+    data = request.get_json() or {}
+    user_id = data.get('user_id', request.remote_addr)
+    
+    try:
+        session = EditingSession.query.filter_by(
+            client_id=client_id,
+            user_id=user_id
+        ).first()
+        
+        if session:
+            db.session.delete(session)
+            db.session.commit()
+            return jsonify({"message": "Editing session ended"}), 200
+        else:
+            return jsonify({"message": "No session to end"}), 200
+            
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error ending editing session: {e}")
+        return jsonify({"error": "Could not end session"}), 500
+
+@app.route('/api/clients/<int:client_id>/editing-status', methods=['GET'])
+def get_editing_status(client_id):
+    from datetime import datetime, timezone, timedelta
+    
+    try:
+        # Clean up expired sessions first
+        expired_time = datetime.now(timezone.utc) - timedelta(minutes=30)
+        EditingSession.query.filter(
+            EditingSession.last_activity < expired_time
+        ).delete()
+        db.session.commit()
+        
+        # Check current editing status
+        active_session = EditingSession.query.filter_by(client_id=client_id).first()
+        
+        if active_session:
+            return jsonify({
+                "is_editing": True,
+                "editor": active_session.user_id,
+                "started_at": active_session.started_at.isoformat(),
+                "last_activity": active_session.last_activity.isoformat()
+            }), 200
+        else:
+            return jsonify({
+                "is_editing": False
+            }), 200
+            
+    except Exception as e:
+        print(f"Error getting editing status: {e}")
+        return jsonify({"error": "Could not get editing status"}), 500
 
 # --- CLI Commands ---
 

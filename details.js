@@ -31,10 +31,152 @@ document.addEventListener('DOMContentLoaded', async () => {
     let hasUnsavedChanges = false;
     let saveStatusTimeout;
 
+    // --- Editing Session Variables ---
+    let isEditingMode = true; // Default to editing allowed
+    let currentUserId = null;
+    let sessionCheckInterval = null;
+
     // --- State Management ---
     function setUnsavedChanges(isDirty) {
         hasUnsavedChanges = isDirty;
         saveChangesButton.disabled = !isDirty;
+    }
+
+    // --- Editing Session Management ---
+    async function generateUserId() {
+        // Simple user ID generation - in production, use proper session management
+        if (!currentUserId) {
+            currentUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        }
+        return currentUserId;
+    }
+
+    async function startEditingSession() {
+        try {
+            const userId = await generateUserId();
+            const response = await fetch(`${API_BASE_URL}/clients/${clientNo}/editing-session`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ user_id: userId })
+            });
+
+            const data = await response.json();
+            
+            if (data.status === 'editing_by_other') {
+                // Another user is editing - switch to read-only mode
+                isEditingMode = false;
+                showEditingByOtherMessage(data.editor, data.started_at);
+                disableEditingInterface();
+                return false;
+            } else if (data.status === 'editing_allowed') {
+                // We can edit
+                isEditingMode = true;
+                startSessionHeartbeat();
+                return true;
+            }
+        } catch (error) {
+            console.error('Error starting editing session:', error);
+            // Default to editing mode if session check fails
+            isEditingMode = true;
+            return true;
+        }
+    }
+
+    async function endEditingSession() {
+        if (!currentUserId) return;
+        
+        try {
+            await fetch(`${API_BASE_URL}/clients/${clientNo}/editing-session`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ user_id: currentUserId })
+            });
+        } catch (error) {
+            console.error('Error ending editing session:', error);
+        }
+
+        if (sessionCheckInterval) {
+            clearInterval(sessionCheckInterval);
+            sessionCheckInterval = null;
+        }
+    }
+
+    function startSessionHeartbeat() {
+        // Update session every 5 minutes
+        sessionCheckInterval = setInterval(async () => {
+            if (!currentUserId || !isEditingMode) return;
+            
+            try {
+                await fetch(`${API_BASE_URL}/clients/${clientNo}/editing-session`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: currentUserId })
+                });
+            } catch (error) {
+                console.error('Error updating editing session:', error);
+            }
+        }, 5 * 60 * 1000); // 5 minutes
+    }
+
+    function showEditingByOtherMessage(editorId, startedAt) {
+        // Create and show read-only mode message
+        const existingMessage = document.getElementById('editing-by-other-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.id = 'editing-by-other-message';
+        messageDiv.className = 'editing-by-other-banner';
+        messageDiv.innerHTML = `
+            <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 10px 0; border-radius: 5px; color: #856404;">
+                <strong>⚠️ 編集中です</strong><br>
+                他のユーザー (${editorId}) がこのクライアントを編集中です。<br>
+                現在は閲覧専用モードです。編集はできません。
+                <button id="refresh-editing-status" style="margin-left: 10px; padding: 5px 10px;">
+                    状態を更新
+                </button>
+            </div>
+        `;
+
+        const container = document.querySelector('.container');
+        container.insertBefore(messageDiv, container.firstChild);
+
+        // Add refresh button functionality
+        document.getElementById('refresh-editing-status').addEventListener('click', async () => {
+            const canEdit = await startEditingSession();
+            if (canEdit) {
+                location.reload(); // Refresh page to enable editing
+            }
+        });
+    }
+
+    function disableEditingInterface() {
+        // Disable all editing controls
+        if (editTasksButton) editTasksButton.style.display = 'none';
+        if (saveChangesButton) saveChangesButton.style.display = 'none';
+        if (finalizeYearButton) finalizeYearButton.style.display = 'none';
+
+        // Add read-only indicators to inputs
+        setTimeout(() => {
+            const inputs = document.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                input.disabled = true;
+                input.title = '編集中のため変更できません';
+            });
+
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.style.opacity = '0.6';
+                cb.style.pointerEvents = 'none';
+            });
+        }, 100);
     }
 
     // --- Task Inheritance Logic ---
@@ -176,6 +318,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         document.body.appendChild(pageOverlay);
         setupYearFilter();
+
+        // Start editing session check
+        const canEdit = await startEditingSession();
 
         try {
             clientDetails = await fetchClientDetails(clientNo);
@@ -1199,6 +1344,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         link.click();
         document.body.removeChild(link);
     }
+
+    // --- Page Unload Event Handling ---
+    window.addEventListener('beforeunload', endEditingSession);
+    window.addEventListener('unload', endEditingSession);
+    
+    // Handle browser tab close / navigation away
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            endEditingSession();
+        }
+    });
 
     // --- Run Application ---
     initializeApp().then(() => {

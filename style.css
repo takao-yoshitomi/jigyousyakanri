@@ -959,3 +959,52 @@ button:active {
 #zoom-value {
     font-weight: bold;
 }
+
+/* Editing Session Styles */
+.editing-by-other-banner {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.editing-by-other-banner button {
+    background-color: #ffc107;
+    border: none;
+    color: #212529;
+    padding: 5px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background-color 0.2s;
+}
+
+.editing-by-other-banner button:hover {
+    background-color: #e0a800;
+}
+
+/* Read-only mode styles */
+.read-only-mode input:disabled,
+.read-only-mode textarea:disabled,
+.read-only-mode select:disabled {
+    background-color: #f8f9fa !important;
+    border-color: #dee2e6 !important;
+    color: #6c757d !important;
+    cursor: not-allowed !important;
+}
+
+.read-only-mode input[type="checkbox"]:disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
