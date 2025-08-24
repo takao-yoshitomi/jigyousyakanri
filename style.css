@@ -1008,3 +1008,45 @@ button:active {
     opacity: 0.6;
     pointer-events: none;
 }
+
+/* === 削除機能スタイル === */
+.danger-zone {
+    border-top: 2px solid #eee;
+    margin-top: 40px;
+    padding-top: 20px;
+}
+
+.danger-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.inactive-btn {
+    background-color: #f0ad4e;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.inactive-btn:hover {
+    background-color: #ec971f;
+}
+
+.delete-btn {
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.delete-btn:hover {
+    background-color: #c9302c;
+}

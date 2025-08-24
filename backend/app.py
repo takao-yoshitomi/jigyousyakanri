@@ -43,6 +43,7 @@ class Client(db.Model):
     staff_id = db.Column(db.Integer, db.ForeignKey('staffs.id'), nullable=False)
     accounting_method = db.Column(db.String(255))
     status = db.Column(db.String(255))
+    is_inactive = db.Column(db.Boolean, default=False, nullable=False)
     custom_tasks_by_year = db.Column(db.JSON, default={})
     finalized_years = db.Column(db.JSON, default=[])
     monthly_tasks = db.relationship('MonthlyTask', backref='client', lazy=True, cascade="all, delete-orphan")
@@ -57,6 +58,7 @@ class Client(db.Model):
             'staff_name': self.staff.name if self.staff else None,
             'accounting_method': self.accounting_method,
             'status': self.status,
+            'is_inactive': self.is_inactive,
             'unattendedMonths': 'N/A', # To be calculated later
             'monthlyProgress': 'N/A', # To be calculated later
             'updated_at': self.updated_at.astimezone(timezone.utc).isoformat() if self.updated_at else None,
@@ -860,6 +862,63 @@ def get_editing_status(client_id):
     except Exception as e:
         print(f"Error getting editing status: {e}")
         return jsonify({"error": "Could not get editing status"}), 500
+
+# --- Client Deletion APIs ---
+
+@app.route('/api/clients/<int:client_id>/set-inactive', methods=['PUT'])
+def set_client_inactive(client_id):
+    """Set client as inactive (関与終了)"""
+    try:
+        # Use pessimistic locking
+        client = db.session.query(Client).filter_by(id=client_id).with_for_update().first()
+        
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
+            
+        client.is_inactive = True
+        client.updated_at = datetime.now(timezone.utc)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": f"事業者 {client.name} を関与終了に設定しました",
+            "client_id": client_id,
+            "is_inactive": True
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error setting client inactive: {e}")
+        return jsonify({"error": "関与終了の設定に失敗しました"}), 500
+
+@app.route('/api/clients/<int:client_id>', methods=['DELETE'])
+def delete_client(client_id):
+    """Completely delete client and all related data"""
+    try:
+        # Use pessimistic locking
+        client = db.session.query(Client).filter_by(id=client_id).with_for_update().first()
+        
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
+        
+        client_name = client.name
+        
+        # Delete all related monthly tasks (cascade should handle this, but explicit deletion for safety)
+        MonthlyTask.query.filter_by(client_id=client_id).delete()
+        
+        # Delete the client
+        db.session.delete(client)
+        db.session.commit()
+        
+        return jsonify({
+            "message": f"事業者 {client_name} を完全に削除しました",
+            "client_id": client_id
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting client: {e}")
+        return jsonify({"error": "事業者の削除に失敗しました"}), 500
 
 # --- CLI Commands ---
 
