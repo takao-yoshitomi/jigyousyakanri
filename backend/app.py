@@ -787,7 +787,8 @@ def init_db_command():
             'highlight_yellow_threshold': 3,
             'highlight_yellow_color': '#FFFF99',
             'highlight_red_threshold': 6,
-            'highlight_red_color': '#FFCDD2'
+            'highlight_red_color': '#FFCDD2',
+            'font_family': '' # Default font family
         }
         for key, value in initial_settings.items():
             setting = Setting(key=key, value=value)

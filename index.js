@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const redThresholdSelect = document.getElementById('red-threshold');
     const yellowColorInput = document.getElementById('yellow-color');
     const redColorInput = document.getElementById('red-color');
+    const fontFamilySelect = document.getElementById('font-family-select');
     
     // Data I/O buttons are disabled for now
     // const exportDataButton = document.getElementById('export-data-button');
@@ -72,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupTableHeaders();
         addEventListeners();
         populateMonthThresholds(); // Populate month dropdowns
+        populateFontFamilySelect(); // Populate font family dropdown
         
         try {
             // Fetch data from backend
@@ -81,6 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchSettings()
             ]);
 
+            applyFontFamily(appSettings.font_family); // Apply font family from settings
+
             populateFilters();
             renderClients();
             updateSortIcons();
@@ -88,6 +92,30 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error initializing app:", error);
             alert("アプリケーションの初期化に失敗しました。");
         }
+    }
+
+    function populateFontFamilySelect() {
+        const fonts = [
+            { name: 'デフォルト', value: '' }, // ブラウザのデフォルトフォント
+            { name: 'メイリオ', value: 'メイリオ, Meiryo, sans-serif' },
+            { name: '游ゴシック', value: '游ゴシック, YuGothic, "Hiragino Kaku Gothic ProN", sans-serif' },
+            { name: 'ＭＳ Ｐゴシック', value: '"ＭＳ Ｐゴシック", "MS PGothic", sans-serif' },
+            { name: 'Arial', value: 'Arial, sans-serif' },
+            { name: 'Verdana', value: 'Verdana, sans-serif' },
+            { name: 'Times New Roman', value: '"Times New Roman", serif' }
+        ];
+
+        fontFamilySelect.innerHTML = ''; // Clear existing options
+        fonts.forEach(font => {
+            const option = document.createElement('option');
+            option.value = font.value;
+            option.textContent = font.name;
+            fontFamilySelect.appendChild(option);
+        });
+    }
+
+    function applyFontFamily(fontFamily) {
+        document.body.style.fontFamily = fontFamily || ''; // デフォルトは空文字列でブラウザのデフォルトに
     }
 
     function setupTableHeaders() {
@@ -295,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
         redThresholdSelect.value = appSettings.highlight_red_threshold || 6;
         yellowColorInput.value = appSettings.highlight_yellow_color || '#FFFF99';
         redColorInput.value = appSettings.highlight_red_color || '#FFCDD2';
+        fontFamilySelect.value = appSettings.font_family || ''; // Set current font family
 
         basicSettingsModal.style.display = 'block';
     }
@@ -304,7 +333,8 @@ document.addEventListener('DOMContentLoaded', () => {
             highlight_yellow_threshold: parseInt(yellowThresholdSelect.value),
             highlight_yellow_color: yellowColorInput.value,
             highlight_red_threshold: parseInt(redThresholdSelect.value),
-            highlight_red_color: redColorInput.value
+            highlight_red_color: redColorInput.value,
+            font_family: fontFamilySelect.value // Save selected font family
         };
 
         try {
@@ -319,6 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             appSettings = updatedSettings; // Update local state
+            applyFontFamily(appSettings.font_family); // Apply new font family
             renderClients(); // Re-render clients to apply new colors
             alert('基本設定を保存しました。');
             basicSettingsModal.style.display = 'none';
@@ -363,7 +394,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            return await response.json();
+            const settings = await response.json();
+            // Set default font if not present
+            if (!settings.font_family) {
+                settings.font_family = ''; // Default to empty string for browser default
+            }
+            return settings;
         } catch (error) {
             console.error("Failed to fetch settings:", error);
             alert("設定の読み込みに失敗しました。デフォルト値を使用します。");
@@ -372,7 +408,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 highlight_yellow_threshold: 3,
                 highlight_yellow_color: '#FFFF99',
                 highlight_red_threshold: 6,
-                highlight_red_color: '#FFCDD2'
+                highlight_red_color: '#FFCDD2',
+                font_family: '' // Default font family
             };
         }
     }
