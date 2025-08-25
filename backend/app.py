@@ -1054,5 +1054,39 @@ def init_db_command():
         print("Database initialized and seeded with initial data.")
 
 
+# Auto-initialize database on startup (for production)
+def ensure_database_initialized():
+    """Ensure database is initialized when app starts"""
+    import os
+    if os.environ.get('FLASK_ENV') == 'production':
+        with app.app_context():
+            try:
+                # Check if tables exist by trying to query
+                Staff.query.first()
+                print("✅ Database already initialized - Staff table exists")
+            except Exception as e:
+                if "does not exist" in str(e) or "UndefinedTable" in str(e):
+                    print("🔄 Tables don't exist, initializing database...")
+                    try:
+                        db.create_all()
+                        print("✅ Database tables created successfully!")
+                        
+                        # Add initial data
+                        initial_staffs_data = ["佐藤", "鈴木", "高橋", "田中", "渡辺"]
+                        for name in initial_staffs_data:
+                            staff = Staff(name=name)
+                            db.session.add(staff)
+                        db.session.commit()
+                        print("✅ Initial staff data created")
+                    except Exception as init_error:
+                        print(f"❌ Database creation failed: {init_error}")
+                        raise
+                else:
+                    print(f"❌ Database check failed: {e}")
+                    raise
+
+# Initialize database on import (for production)
+ensure_database_initialized()
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
