@@ -1018,6 +1018,7 @@ def export_clients_csv():
 @app.route('/api/clients/import', methods=['POST'])
 def import_clients_csv():
     """Import clients from CSV format"""
+    from flask import request
     try:
         if 'file' not in request.files:
             return jsonify({"error": "ファイルが選択されていません"}), 400
