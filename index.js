@@ -197,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveStaffButton.addEventListener('click', saveStaff);
         staffListContainer.addEventListener('click', handleStaffListClick);
         staffListContainer.addEventListener('input', handleStaffListInput);
+        addStaffButton.addEventListener('click', addStaff);
 
         // Basic Settings Modal Listeners
         openBasicSettingsModalButton.addEventListener('click', openBasicSettingsModal);
