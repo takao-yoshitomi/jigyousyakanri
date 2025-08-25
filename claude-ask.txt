@@ -1,11 +1,19 @@
-ocalhost:5000/api/clients/import:1  Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)Understand this error
-index.js:824 Import error: Error: CSVインポートに失敗しました
-    at HTMLInputElement.importClientsCSV (index.js:809:23)
-importClientsCSV @ index.js:824Understand this error
-localhost:5000/api/clients/import:1  Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)Understand this error
-index.js:824 Import error: Error: CSVインポートに失敗しました
-    at HTMLInputElement.importClientsCSV (index.js:809:23)
-importClientsCSV @ index.js:824Understand this error
-localhost:5000/api/clients/import:1  Failed to load resource: the server responded with a status of 500 (INTERNAL SERVER ERROR)Understand this error
-index.js:824 Import error: Error: CSVインポートに失敗しました
-    at HTMLInputElement.importClientsCSV (index.js:809:23)
+
+2025-08-25T19:15:18.960252107Z ==> Available at your primary URL https://jigyousya-backend.onrender.com
+2025-08-25T19:15:19.152375291Z ==> 
+2025-08-25T19:15:20.729554687Z ==> ///////////////////////////////////////////////////////////
+2025-08-25T19:15:23.733133992Z 127.0.0.1 - - [25/Aug/2025:19:15:23 +0000] "GET / HTTP/1.1" 200 50 "-" "Go-http-client/2.0"
+2025-08-25T19:15:41.357299399Z 127.0.0.1 - - [25/Aug/2025:19:15:41 +0000] "GET /api/clients HTTP/1.1" 200 370 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-25T19:15:41.36125818Z 127.0.0.1 - - [25/Aug/2025:19:15:41 +0000] "GET /api/staffs HTTP/1.1" 200 33 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-25T19:15:41.750426757Z 127.0.0.1 - - [25/Aug/2025:19:15:41 +0000] "GET /api/settings HTTP/1.1" 200 3 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-25T19:16:12.767202106Z [2025-08-25 19:16:12 +0000] [67] [INFO] Handling signal: term
+2025-08-25T19:16:12.767590798Z [2025-08-25 19:16:12 +0000] [68] [INFO] Worker exiting (pid: 68)
+2025-08-25T19:16:14.243959579Z ✅ Found 1 clients, adding more sample data...
+2025-08-25T19:16:14.24397226Z [2025-08-25 19:16:14 +0000] [67] [INFO] Shutting down: Master
+2025-08-25T19:16:14.243983071Z Found 1 staff members: ['吉冨']
+2025-08-25T19:16:14.243989181Z ℹ️  Client 株式会社サンプル (No.101) already exists
+2025-08-25T19:16:14.243994812Z ⚠️  Staff '鈴木' not found, skipping client テスト商事
+2025-08-25T19:16:14.244005953Z ⚠️  Staff '高橋' not found, skipping client サンプル工業
+2025-08-25T19:16:14.244013593Z ⚠️  Staff '田中' not found, skipping client デモ株式会社
+2025-08-25T19:16:14.244026334Z ⚠️  Staff '渡辺' not found, skipping client 例示有限会社
+2025-08-25T19:16:14.244029315Z ℹ️  No new clients were added

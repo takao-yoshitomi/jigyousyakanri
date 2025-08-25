@@ -19,13 +19,22 @@ def add_sample_data():
                 print("❌ No staff members found. Please ensure staff data exists first.")
                 return False
             
-            # Add sample clients
+            # Add sample clients - use existing staff names
+            available_staff_names = list(staff_map.keys())
+            if not available_staff_names:
+                print("❌ No staff members found. Cannot add sample clients.")
+                return False
+            
+            # Use the first available staff for all sample clients
+            default_staff = available_staff_names[0]
+            print(f"📋 Using staff '{default_staff}' for all sample clients")
+            
             sample_clients = [
-                {"no": 101, "name": "株式会社サンプル", "fiscal_month": "3月", "staff": "佐藤", "method": "記帳代行", "status": "作業中"},
-                {"no": 102, "name": "テスト商事", "fiscal_month": "12月", "staff": "鈴木", "method": "自計", "status": "完了"},
-                {"no": 103, "name": "サンプル工業", "fiscal_month": "9月", "staff": "高橋", "method": "記帳代行", "status": "依頼中"},
-                {"no": 104, "name": "デモ株式会社", "fiscal_month": "6月", "staff": "田中", "method": "自計", "status": "チェック待ち"},
-                {"no": 105, "name": "例示有限会社", "fiscal_month": "1月", "staff": "渡辺", "method": "記帳代行", "status": "未着手"},
+                {"no": 101, "name": "株式会社サンプル", "fiscal_month": "3月", "staff": default_staff, "method": "記帳代行", "status": "作業中"},
+                {"no": 102, "name": "テスト商事", "fiscal_month": "12月", "staff": default_staff, "method": "自計", "status": "完了"},
+                {"no": 103, "name": "サンプル工業", "fiscal_month": "9月", "staff": default_staff, "method": "記帳代行", "status": "依頼中"},
+                {"no": 104, "name": "デモ株式会社", "fiscal_month": "6月", "staff": default_staff, "method": "自計", "status": "チェック待ち"},
+                {"no": 105, "name": "例示有限会社", "fiscal_month": "1月", "staff": default_staff, "method": "記帳代行", "status": "未着手"},
             ]
             
             added_count = 0
