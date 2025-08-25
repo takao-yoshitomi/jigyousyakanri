@@ -43,23 +43,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Editing Session Management ---
-    async function generateUserId() {
-        // Simple user ID generation - in production, use proper session management
-        if (!currentUserId) {
-            currentUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        }
-        return currentUserId;
-    }
-
     async function startEditingSession() {
         try {
-            const userId = await generateUserId();
+            currentUserId = Config.displayUserId(); // Display user ID and get it
             const response = await fetch(`${API_BASE_URL}/clients/${clientNo}/editing-session`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ user_id: userId })
+                body: JSON.stringify({ user_id: currentUserId })
             });
 
             const data = await response.json();
@@ -1386,9 +1378,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Handle navigation to main page
     const backToMainLink = document.getElementById('back-to-main');
     if (backToMainLink) {
-        backToMainLink.addEventListener('click', (e) => {
-            // End editing session synchronously before navigation
-            endEditingSession();
+        backToMainLink.addEventListener('click', async (e) => {
+            e.preventDefault(); // Prevent immediate navigation
+            
+            // End editing session and wait for completion
+            try {
+                await endEditingSession();
+                console.log('Editing session ended successfully');
+            } catch (error) {
+                console.error('Error ending session:', error);
+            }
+            
+            // Navigate to main page after session is ended
+            window.location.href = 'index.html';
         });
     }
 

@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Display user ID in header
+    Config.displayUserId();
     // --- DOM Element Selectors ---
     const clientsTableBody = document.querySelector('#clients-table tbody');
     const searchInput = document.getElementById('search-input');

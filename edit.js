@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Display user ID in header
+    Config.displayUserId();
     // --- DOM Element Selectors ---
     const pageTitle = document.querySelector('h1');
     const clientNameDisplay = document.getElementById('client-name-display');

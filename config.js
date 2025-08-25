@@ -1,5 +1,24 @@
 // API設定の一元管理
 const Config = {
+    // ユーザーID管理
+    _currentUserId: null,
+    
+    generateUserId() {
+        if (!this._currentUserId) {
+            this._currentUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        }
+        return this._currentUserId;
+    },
+    
+    displayUserId() {
+        const userId = this.generateUserId();
+        const userIdDisplay = document.getElementById('user-id-display');
+        if (userIdDisplay) {
+            userIdDisplay.textContent = `(${userId})`;
+        }
+        return userId;
+    },
+    
     // 環境に応じてAPI基底URLを自動判定
     getApiBaseUrl() {
         // 本番環境の判定 (render.comまたはカスタムドメイン)
