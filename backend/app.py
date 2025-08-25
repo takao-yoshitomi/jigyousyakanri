@@ -965,6 +965,166 @@ def delete_client(client_id):
         print(f"Error deleting client: {e}")
         return jsonify({"error": "事業者の削除に失敗しました"}), 500
 
+# --- CSV Import/Export APIs ---
+
+@app.route('/api/clients/export', methods=['GET'])
+def export_clients_csv():
+    """Export all clients to CSV format"""
+    try:
+        clients = Client.query.join(Staff).all()
+        
+        # Create CSV data
+        import csv
+        import io
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # CSV headers
+        headers = ['No.', '事業所名', '決算月', '担当者', '経理方式', '進捗ステータス', '状態']
+        writer.writerow(headers)
+        
+        # CSV data rows
+        for client in clients:
+            status = "関与終了" if client.is_inactive else "有効"
+            writer.writerow([
+                client.id,
+                client.name,
+                f"{client.fiscal_month}月",
+                client.staff.name,
+                client.accounting_method,
+                client.status,
+                status
+            ])
+        
+        # Prepare response
+        output.seek(0)
+        csv_data = output.getvalue()
+        output.close()
+        
+        from flask import make_response
+        response = make_response(csv_data)
+        response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+        response.headers['Content-Disposition'] = 'attachment; filename=clients.csv'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error exporting clients: {e}")
+        return jsonify({"error": "CSVエクスポートに失敗しました"}), 500
+
+@app.route('/api/clients/import', methods=['POST'])
+def import_clients_csv():
+    """Import clients from CSV format"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "ファイルが選択されていません"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "ファイルが選択されていません"}), 400
+        
+        if not file.filename.lower().endswith('.csv'):
+            return jsonify({"error": "CSVファイルを選択してください"}), 400
+        
+        # Read CSV data
+        import csv
+        import io
+        stream = io.StringIO(file.stream.read().decode("UTF-8"), newline=None)
+        csv_reader = csv.reader(stream)
+        
+        # Skip header row
+        headers = next(csv_reader, None)
+        if not headers:
+            return jsonify({"error": "CSVファイルが空です"}), 400
+        
+        # Get existing staff for validation
+        staff_map = {staff.name: staff.id for staff in Staff.query.all()}
+        
+        added_count = 0
+        updated_count = 0
+        errors = []
+        
+        for row_num, row in enumerate(csv_reader, start=2):  # Start from row 2 (after header)
+            try:
+                if len(row) < 6:
+                    errors.append(f"行{row_num}: データが不足しています")
+                    continue
+                
+                client_no = int(row[0]) if row[0].isdigit() else None
+                name = row[1].strip()
+                fiscal_month = row[2].replace('月', '').strip()
+                staff_name = row[3].strip()
+                accounting_method = row[4].strip()
+                status = row[5].strip()
+                is_inactive = len(row) > 6 and row[6].strip() == "関与終了"
+                
+                # Validation
+                if not client_no:
+                    errors.append(f"行{row_num}: 無効なNo.です")
+                    continue
+                    
+                if not name:
+                    errors.append(f"行{row_num}: 事業所名が空です")
+                    continue
+                    
+                if not fiscal_month.isdigit() or not (1 <= int(fiscal_month) <= 12):
+                    errors.append(f"行{row_num}: 無効な決算月です")
+                    continue
+                    
+                if staff_name not in staff_map:
+                    errors.append(f"行{row_num}: 担当者 '{staff_name}' が見つかりません")
+                    continue
+                
+                # Check if client exists
+                existing_client = Client.query.filter_by(id=client_no).first()
+                
+                if existing_client:
+                    # Update existing client
+                    existing_client.name = name
+                    existing_client.fiscal_month = int(fiscal_month)
+                    existing_client.staff_id = staff_map[staff_name]
+                    existing_client.accounting_method = accounting_method
+                    existing_client.status = status
+                    existing_client.is_inactive = is_inactive
+                    updated_count += 1
+                else:
+                    # Create new client
+                    new_client = Client(
+                        id=client_no,
+                        name=name,
+                        fiscal_month=int(fiscal_month),
+                        staff_id=staff_map[staff_name],
+                        accounting_method=accounting_method,
+                        status=status,
+                        is_inactive=is_inactive,
+                        custom_tasks_by_year={},
+                        finalized_years=[]
+                    )
+                    db.session.add(new_client)
+                    added_count += 1
+                    
+            except Exception as e:
+                errors.append(f"行{row_num}: {str(e)}")
+                continue
+        
+        # Commit changes if no critical errors
+        if added_count > 0 or updated_count > 0:
+            db.session.commit()
+        
+        result = {
+            "message": f"インポート完了: {added_count}件追加, {updated_count}件更新",
+            "added": added_count,
+            "updated": updated_count,
+            "errors": errors
+        }
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error importing clients: {e}")
+        return jsonify({"error": "CSVインポートに失敗しました"}), 500
+
 # --- CLI Commands ---
 
 @app.cli.command("init-db")

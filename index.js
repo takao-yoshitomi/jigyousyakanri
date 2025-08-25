@@ -41,10 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const fontFamilySelect = document.getElementById('font-family-select');
     const hideInactiveClientsCheckbox = document.getElementById('hide-inactive-clients');
     
-    // Data I/O buttons are disabled for now
-    // const exportDataButton = document.getElementById('export-data-button');
-    // const importDataButton = document.getElementById('import-data-button');
-    // const importFileInput = document.getElementById('import-file-input');
+    // CSV Import/Export elements
+    const exportCsvButton = document.getElementById('export-csv-button');
+    const importCsvButton = document.getElementById('import-csv-button');
+    const csvFileInput = document.getElementById('csv-file-input');
 
     // --- State Variables ---
     let clients = [];
@@ -178,13 +178,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sorting listener
         clientsTableHeadRow.addEventListener('click', handleSortClick);
 
-        // Button listeners (Staff and I/O buttons are disabled for now)
-        // document.getElementById('manage-staff-button').disabled = true;
+        // Button listeners
         document.getElementById('add-client-button').addEventListener('click', () => {
             window.location.href = 'edit.html';
         });
-        // document.getElementById('export-data-button').disabled = true;
-        // document.getElementById('import-data-button').disabled = true;
+        
+        // CSV Import/Export listeners
+        exportCsvButton.addEventListener('click', exportClientsCSV);
+        importCsvButton.addEventListener('click', () => csvFileInput.click());
+        csvFileInput.addEventListener('change', importClientsCSV);
 
         // Staff Modal listeners
         document.getElementById('manage-staff-button').addEventListener('click', openStaffModal);
@@ -750,6 +752,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             alert(`保存中にエラーが発生しました: ${error.message}`);
+        }
+    }
+
+    // --- CSV Import/Export Functions ---
+    async function exportClientsCSV() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/export`);
+            
+            if (!response.ok) {
+                throw new Error(`Export failed: ${response.status}`);
+            }
+            
+            // Create download link
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'clients.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            alert('✅ CSVエクスポートが完了しました！');
+            
+        } catch (error) {
+            console.error('Export error:', error);
+            alert(`❌ CSVエクスポートに失敗しました: ${error.message}`);
+        }
+    }
+
+    async function importClientsCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Reset file input
+        event.target.value = '';
+        
+        if (!confirm('CSVファイルをインポートしますか？\n既存データは更新され、新しいデータは追加されます。')) {
+            return;
+        }
+        
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await fetch(`${API_BASE_URL}/clients/import`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.error || 'Import failed');
+            }
+            
+            // Show results
+            let message = `✅ ${result.message}`;
+            if (result.errors && result.errors.length > 0) {
+                message += '\n\n⚠️ 以下のエラーがありました:\n' + result.errors.join('\n');
+            }
+            
+            alert(message);
+            
+            // Reload data to show changes
+            await initializeApp();
+            
+        } catch (error) {
+            console.error('Import error:', error);
+            alert(`❌ CSVインポートに失敗しました: ${error.message}`);
         }
     }
 
