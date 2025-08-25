@@ -1,1 +1,18 @@
-今URL で開いたらテストデータもない初期化状態です
+
+2025-08-25T18:54:54.445230492Z ==> 
+2025-08-25T18:54:54.616483209Z ==> ///////////////////////////////////////////////////////////
+2025-08-25T18:54:54.788080347Z ==> 
+2025-08-25T18:54:54.961404975Z ==> Available at your primary URL https://jigyousya-backend.onrender.com
+2025-08-25T18:54:55.567377827Z ==> 
+2025-08-25T18:54:55.742692145Z ==> ///////////////////////////////////////////////////////////
+2025-08-25T18:54:57.287281894Z 127.0.0.1 - - [25/Aug/2025:18:54:57 +0000] "GET / HTTP/1.1" 200 50 "-" "Go-http-client/2.0"
+2025-08-25T18:55:53.967342232Z [2025-08-25 18:55:53 +0000] [65] [INFO] Handling signal: term
+2025-08-25T18:55:53.968209366Z [2025-08-25 18:55:53 +0000] [66] [INFO] Worker exiting (pid: 66)
+2025-08-25T18:55:55.273273361Z [2025-08-25 18:55:55 +0000] [65] [INFO] Shutting down: Master
+2025-08-25T18:55:55.273304843Z ✅ Database already initialized - Staff and Client tables exist
+2025-08-25T18:55:56.32547919Z 127.0.0.1 - - [25/Aug/2025:18:55:56 +0000] "GET /api/staffs HTTP/1.1" 200 33 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-25T18:55:56.37717891Z 127.0.0.1 - - [25/Aug/2025:18:55:56 +0000] "GET /api/clients HTTP/1.1" 200 370 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-25T18:55:56.814644963Z 127.0.0.1 - - [25/Aug/2025:18:55:56 +0000] "GET /api/settings HTTP/1.1" 200 3 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-25T18:56:02.704551462Z 127.0.0.1 - - [25/Aug/2025:18:56:02 +0000] "GET /api/clients/export HTTP/1.1" 200 152 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-25T18:59:55.647305209Z ==> Detected service running on port 10000
+2025-08-25T18:59:56.040152689Z ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding

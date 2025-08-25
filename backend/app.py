@@ -996,13 +996,16 @@ def export_clients_csv():
                 status
             ])
         
-        # Prepare response
+        # Prepare response with BOM for Excel compatibility
         output.seek(0)
         csv_data = output.getvalue()
         output.close()
         
+        # Add UTF-8 BOM for proper Excel display
+        csv_data_with_bom = '\ufeff' + csv_data
+        
         from flask import make_response
-        response = make_response(csv_data)
+        response = make_response(csv_data_with_bom.encode('utf-8'))
         response.headers['Content-Type'] = 'text/csv; charset=utf-8'
         response.headers['Content-Disposition'] = 'attachment; filename=clients.csv'
         
@@ -1026,10 +1029,28 @@ def import_clients_csv():
         if not file.filename.lower().endswith('.csv'):
             return jsonify({"error": "CSVファイルを選択してください"}), 400
         
-        # Read CSV data
+        # Read CSV data with proper encoding detection
         import csv
         import io
-        stream = io.StringIO(file.stream.read().decode("UTF-8"), newline=None)
+        
+        # Try to decode with UTF-8 first, then with other encodings
+        file_content = file.stream.read()
+        try:
+            # Try UTF-8 (with or without BOM)
+            decoded_content = file_content.decode('utf-8-sig')
+        except UnicodeDecodeError:
+            try:
+                # Try Shift_JIS (common in Japan)
+                decoded_content = file_content.decode('shift_jis')
+            except UnicodeDecodeError:
+                try:
+                    # Try CP932 (Windows Japanese)
+                    decoded_content = file_content.decode('cp932')
+                except UnicodeDecodeError:
+                    # Fallback to UTF-8 with errors='replace'
+                    decoded_content = file_content.decode('utf-8', errors='replace')
+        
+        stream = io.StringIO(decoded_content, newline=None)
         csv_reader = csv.reader(stream)
         
         # Skip header row
@@ -1230,8 +1251,17 @@ def ensure_database_initialized():
                     # Add sample data directly
                     from add_sample_data import add_sample_data
                     add_sample_data()
+                elif existing_staff and existing_clients:
+                    # Check if we have sample data (5 specific clients)
+                    client_count = Client.query.count()
+                    if client_count < 5:
+                        print(f"✅ Found {client_count} clients, adding more sample data...")
+                        from add_sample_data import add_sample_data
+                        add_sample_data()
+                    else:
+                        print("✅ Database already initialized - Staff and Client tables exist")
                 else:
-                    print("✅ Database already initialized - Staff and Client tables exist")
+                    print("✅ Database already initialized")
             except Exception as e:
                 if "does not exist" in str(e) or "UndefinedTable" in str(e):
                     print("🔄 Tables don't exist, initializing database...")
