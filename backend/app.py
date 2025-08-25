@@ -1062,8 +1062,16 @@ def ensure_database_initialized():
         with app.app_context():
             try:
                 # Check if tables exist by trying to query
-                Staff.query.first()
-                print("✅ Database already initialized - Staff table exists")
+                existing_staff = Staff.query.first()
+                existing_clients = Client.query.first()
+                
+                if existing_staff and not existing_clients:
+                    print("✅ Staff table exists, but no clients found. Adding sample data...")
+                    # Add sample data directly
+                    from add_sample_data import add_sample_data
+                    add_sample_data()
+                else:
+                    print("✅ Database already initialized - Staff and Client tables exist")
             except Exception as e:
                 if "does not exist" in str(e) or "UndefinedTable" in str(e):
                     print("🔄 Tables don't exist, initializing database...")
@@ -1073,11 +1081,41 @@ def ensure_database_initialized():
                         
                         # Add initial data
                         initial_staffs_data = ["佐藤", "鈴木", "高橋", "田中", "渡辺"]
+                        staff_map = {}
                         for name in initial_staffs_data:
-                            staff = Staff(name=name)
-                            db.session.add(staff)
+                            existing_staff = Staff.query.filter_by(name=name).first()
+                            if not existing_staff:
+                                staff = Staff(name=name)
+                                db.session.add(staff)
+                                db.session.flush()  # Get ID immediately
+                                staff_map[name] = staff.id
+                            else:
+                                staff_map[name] = existing_staff.id
+                        
+                        # Add sample clients
+                        sample_clients = [
+                            {"no": 101, "name": "株式会社サンプル", "fiscal_month": "3月", "staff": "佐藤", "method": "記帳代行", "status": "作業中"},
+                            {"no": 102, "name": "テスト商事", "fiscal_month": "12月", "staff": "鈴木", "method": "自計", "status": "完了"},
+                            {"no": 103, "name": "サンプル工業", "fiscal_month": "9月", "staff": "高橋", "method": "記帳代行", "status": "依頼中"},
+                        ]
+                        
+                        for client_data in sample_clients:
+                            existing_client = Client.query.filter_by(id=client_data["no"]).first()
+                            if not existing_client:
+                                client = Client(
+                                    id=client_data["no"],
+                                    name=client_data["name"],
+                                    fiscal_month=int(client_data["fiscal_month"].replace('月','')),
+                                    staff_id=staff_map[client_data["staff"]],
+                                    accounting_method=client_data["method"],
+                                    status=client_data["status"],
+                                    custom_tasks_by_year={},
+                                    finalized_years=[]
+                                )
+                                db.session.add(client)
+                        
                         db.session.commit()
-                        print("✅ Initial staff data created")
+                        print("✅ Initial staff and client data created")
                     except Exception as init_error:
                         print(f"❌ Database creation failed: {init_error}")
                         raise
