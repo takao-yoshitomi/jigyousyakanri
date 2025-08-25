@@ -1,0 +1,28 @@
+
+
+2025-08-25T18:02:50.43179478Z Error fetching staffs: (psycopg2.errors.UndefinedTable) relation "staffs" does not exist
+2025-08-25T18:02:50.431820711Z LINE 2: FROM staffs ORDER BY staffs.id
+2025-08-25T18:02:50.431826122Z              ^
+2025-08-25T18:02:50.431830322Z 
+2025-08-25T18:02:50.431835562Z [SQL: SELECT staffs.id AS staffs_id, staffs.name AS staffs_name 
+2025-08-25T18:02:50.431839212Z FROM staffs ORDER BY staffs.id]
+2025-08-25T18:02:50.431842052Z (Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-25T18:02:50.431847672Z 127.0.0.1 - - [25/Aug/2025:18:02:50 +0000] "GET /api/staffs HTTP/1.1" 500 35 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-25T18:02:50.716360068Z Error fetching clients: (psycopg2.errors.UndefinedTable) relation "clients" does not exist
+2025-08-25T18:02:50.716376038Z LINE 2: FROM clients JOIN staffs ON staffs.id = clients.staff_id ORD...
+2025-08-25T18:02:50.716380778Z              ^
+2025-08-25T18:02:50.716531624Z 
+2025-08-25T18:02:50.716541445Z [SQL: SELECT clients.id AS clients_id, clients.name AS clients_name, clients.fiscal_month AS clients_fiscal_month, clients.staff_id AS clients_staff_id, clients.accounting_method AS clients_accounting_method, clients.status AS clients_status, clients.is_inactive AS clients_is_inactive, clients.custom_tasks_by_year AS clients_custom_tasks_by_year, clients.finalized_years AS clients_finalized_years, clients.created_at AS clients_created_at, clients.updated_at AS clients_updated_at 
+2025-08-25T18:02:50.716547825Z FROM clients JOIN staffs ON staffs.id = clients.staff_id ORDER BY clients.id]
+2025-08-25T18:02:50.716552565Z (Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-25T18:02:50.716572996Z 127.0.0.1 - - [25/Aug/2025:18:02:50 +0000] "GET /api/clients HTTP/1.1" 500 36 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-25T18:02:50.933854857Z Error fetching settings: (psycopg2.errors.UndefinedTable) relation "settings" does not exist
+2025-08-25T18:02:50.933876658Z LINE 2: FROM settings
+2025-08-25T18:02:50.933881418Z              ^
+2025-08-25T18:02:50.933885409Z 
+2025-08-25T18:02:50.933891299Z [SQL: SELECT settings.key AS settings_key, settings.value AS settings_value, settings.created_at AS settings_created_at, settings.updated_at AS settings_updated_at 
+2025-08-25T18:02:50.933895689Z FROM settings]
+2025-08-25T18:02:50.933900149Z (Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-25T18:02:50.93391849Z 127.0.0.1 - - [25/Aug/2025:18:02:50 +0000] "GET /api/settings HTTP/1.1" 500 37 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+2025-08-25T18:05:40.370252676Z ==> Detected service running on port 10000
+2025-08-25T18:05:40.982104608Z ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
