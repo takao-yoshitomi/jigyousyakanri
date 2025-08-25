@@ -1314,6 +1314,58 @@ def ensure_database_initialized():
                     print(f"❌ Database check failed: {e}")
                     raise
 
+@app.route('/api/admin/reset-database', methods=['POST'])
+def reset_database():
+    """Reset database completely - WARNING: This will delete ALL data"""
+    try:
+        # Check if this is authorized (you might want to add authentication here)
+        
+        # Drop all tables
+        db.drop_all()
+        print("✅ All tables dropped")
+        
+        # Create all tables
+        db.create_all()
+        print("✅ Tables recreated")
+        
+        # Initialize with basic data
+        from add_sample_data import add_sample_data
+        
+        # Add initial staff
+        initial_staffs = ["佐藤", "鈴木", "高橋", "田中", "渡辺"]
+        for name in initial_staffs:
+            staff = Staff(name=name)
+            db.session.add(staff)
+        
+        db.session.commit()
+        print("✅ Initial staff added")
+        
+        # Add sample data
+        add_sample_data()
+        
+        # Add default settings
+        initial_settings = {
+            'highlight_yellow_threshold': 3,
+            'highlight_yellow_color': '#FFFF99',
+            'highlight_red_threshold': 6,
+            'highlight_red_color': '#FFCDD2',
+            'font_family': ''
+        }
+        for key, value in initial_settings.items():
+            setting = Setting(key=key, value=value)
+            db.session.add(setting)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "データベースが正常にリセットされました",
+            "status": "success"
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Database reset failed: {e}")
+        return jsonify({"error": f"データベースリセットに失敗しました: {str(e)}"}), 500
+
 # Initialize database on import (for production)
 ensure_database_initialized()
 

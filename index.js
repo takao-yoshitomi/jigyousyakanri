@@ -187,6 +187,9 @@ document.addEventListener('DOMContentLoaded', () => {
         exportCsvButton.addEventListener('click', exportClientsCSV);
         importCsvButton.addEventListener('click', () => csvFileInput.click());
         csvFileInput.addEventListener('change', importClientsCSV);
+        
+        // Database Reset listener
+        document.getElementById('reset-database-button').addEventListener('click', resetDatabase);
 
         // Staff Modal listeners
         document.getElementById('manage-staff-button').addEventListener('click', openStaffModal);
@@ -823,6 +826,47 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Import error:', error);
             alert(`❌ CSVインポートに失敗しました: ${error.message}`);
+        }
+    }
+
+    async function resetDatabase() {
+        const confirmMessage = `⚠️ データベース初期化の警告\n\n` +
+            `この操作により以下のデータが完全に削除されます:\n` +
+            `• すべての事業者データ\n` +
+            `• すべての月次進捗データ\n` +
+            `• すべての担当者データ\n` +
+            `• すべてのカスタム設定\n\n` +
+            `この操作は元に戻すことができません。\n` +
+            `本当に実行しますか？`;
+            
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+        
+        const doubleConfirm = confirm('最終確認：データベースを初期化しますか？\n\n全データが失われます。');
+        if (!doubleConfirm) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/reset-database`, {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.error || 'Database reset failed');
+            }
+            
+            alert(`✅ ${result.message}\n\nサンプルデータと初期設定が作成されました。`);
+            
+            // Reload the page to show fresh data
+            window.location.reload();
+            
+        } catch (error) {
+            console.error('Database reset error:', error);
+            alert(`❌ データベース初期化に失敗しました: ${error.message}`);
         }
     }
 
