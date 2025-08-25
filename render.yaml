@@ -12,7 +12,7 @@ services:
     runtime: python3
     plan: free
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && flask init-db && gunicorn --bind 0.0.0.0:$PORT app:app
+    startCommand: cd backend && python init_db.py && gunicorn --bind 0.0.0.0:$PORT app:app
     envVars:
       - key: FLASK_ENV
         value: production
