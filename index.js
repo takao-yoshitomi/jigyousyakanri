@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let defaultTasks = {}; // State for default tasks
     let appSettings = {}; // State for application settings
 
-    const API_BASE_URL = 'http://localhost:5001/api';
+    const API_BASE_URL = Config.getApiBaseUrl();
 
     // --- Mappings ---
     const headerMap = {

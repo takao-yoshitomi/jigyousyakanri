@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
 
     // --- State Variables ---
-    const API_BASE_URL = 'http://localhost:5001/api';
+    const API_BASE_URL = Config.getApiBaseUrl();
     const urlParams = new URLSearchParams(window.location.search);
     const clientId = urlParams.get('no') ? parseInt(urlParams.get('no')) : null;
     const isNewMode = clientId === null;

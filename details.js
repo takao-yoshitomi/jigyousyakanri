@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mainContainer = document.querySelector('.container');
 
     // --- State Variables ---
-    const API_BASE_URL = 'http://localhost:5001/api';
+    const API_BASE_URL = Config.getApiBaseUrl();
     const urlParams = new URLSearchParams(window.location.search);
     const clientNo = urlParams.get('no');
     let clientDetails = null;
