@@ -742,8 +742,8 @@ def start_editing_session(client_id):
         if not client:
             return jsonify({"error": "Client not found"}), 404
         
-        # Clean up expired sessions (older than 30 minutes)
-        expired_time = datetime.now(timezone.utc) - timedelta(minutes=30)
+        # Clean up expired sessions (older than 10 minutes)
+        expired_time = datetime.now(timezone.utc) - timedelta(minutes=10)
         EditingSession.query.filter(
             EditingSession.last_activity < expired_time
         ).delete()
@@ -839,7 +839,7 @@ def get_editing_status(client_id):
     
     try:
         # Clean up expired sessions first
-        expired_time = datetime.now(timezone.utc) - timedelta(minutes=30)
+        expired_time = datetime.now(timezone.utc) - timedelta(minutes=10)
         EditingSession.query.filter(
             EditingSession.last_activity < expired_time
         ).delete()
@@ -863,6 +863,24 @@ def get_editing_status(client_id):
     except Exception as e:
         print(f"Error getting editing status: {e}")
         return jsonify({"error": "Could not get editing status"}), 500
+
+@app.route('/api/clients/<int:client_id>/editing-session/force-unlock', methods=['DELETE'])
+def force_unlock_editing_session(client_id):
+    """Force unlock editing session (管理者用)"""
+    try:
+        # Delete all editing sessions for this client
+        deleted_count = EditingSession.query.filter_by(client_id=client_id).delete()
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Editing session forcefully unlocked",
+            "sessions_removed": deleted_count
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error force unlocking session: {e}")
+        return jsonify({"error": "Could not force unlock session"}), 500
 
 # --- Client Deletion APIs ---
 

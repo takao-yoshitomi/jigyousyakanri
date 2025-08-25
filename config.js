@@ -8,8 +8,13 @@ const Config = {
             return '/api';  // 本番環境では相対パス (nginxがプロキシ)
         }
         
-        // 開発環境
-        return 'http://localhost:5001/api';
+        // Docker環境の判定（ポート5001でアクセスしている場合）
+        if (window.location.port === '5001') {
+            return 'http://localhost:5001/api';  // Docker Compose環境
+        }
+        
+        // 通常の開発環境（Flask開発サーバー直接実行）
+        return 'http://localhost:5000/api';
     }
 };
 

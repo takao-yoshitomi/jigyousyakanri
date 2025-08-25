@@ -139,9 +139,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <strong>⚠️ 編集中です</strong><br>
                 他のユーザー (${editorId}) がこのクライアントを編集中です。<br>
                 現在は閲覧専用モードです。編集はできません。
-                <button id="refresh-editing-status" style="margin-left: 10px; padding: 5px 10px;">
-                    状態を更新
-                </button>
+                <div style="margin-top: 10px;">
+                    <button id="refresh-editing-status" style="padding: 5px 10px; margin-right: 5px;">
+                        状態を更新
+                    </button>
+                    <button id="force-unlock-session" style="padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 3px;">
+                        強制解除
+                    </button>
+                </div>
             </div>
         `;
 
@@ -153,6 +158,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             const canEdit = await startEditingSession();
             if (canEdit) {
                 location.reload(); // Refresh page to enable editing
+            }
+        });
+
+        // Add force unlock functionality
+        document.getElementById('force-unlock-session').addEventListener('click', async () => {
+            if (confirm('⚠️ 強制解除しますか？\n\n他のユーザーの作業が中断される可能性があります。\n本当に実行しますか？')) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/clients/${clientNo}/editing-session/force-unlock`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        alert('✅ 編集ロックを強制解除しました。');
+                        location.reload(); // Refresh page to enable editing
+                    } else {
+                        const errorData = await response.json();
+                        alert(`❌ 強制解除に失敗しました: ${errorData.error || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error force unlocking session:', error);
+                    alert('❌ 強制解除中にエラーが発生しました。');
+                }
             }
         });
     }
@@ -1355,6 +1382,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             endEditingSession();
         }
     });
+
+    // Handle navigation to main page
+    const backToMainLink = document.getElementById('back-to-main');
+    if (backToMainLink) {
+        backToMainLink.addEventListener('click', (e) => {
+            // End editing session synchronously before navigation
+            endEditingSession();
+        });
+    }
 
     // --- Run Application ---
     initializeApp().then(() => {
