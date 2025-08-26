@@ -21,9 +21,16 @@ const Config = {
     
     // 環境に応じてAPI基底URLを自動判定
     getApiBaseUrl() {
+        const hostname = window.location.hostname;
+        
+        // Vercel環境の判定
+        if (hostname.includes('vercel.app')) {
+            return 'https://jigyousya-backend.onrender.com/api';  // VercelからRender APIへ
+        }
+        
         // 本番環境の判定 (render.comまたはカスタムドメイン)
-        if (window.location.hostname.includes('.onrender.com') || 
-            (window.location.protocol === 'https:' && window.location.hostname !== 'localhost')) {
+        if (hostname.includes('.onrender.com') || 
+            (window.location.protocol === 'https:' && hostname !== 'localhost')) {
             return '/api';  // 本番環境では相対パス (nginxがプロキシ)
         }
         
