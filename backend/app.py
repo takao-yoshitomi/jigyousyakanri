@@ -1110,6 +1110,14 @@ def import_clients_csv():
                     existing_client.is_inactive = is_inactive
                     updated_count += 1
                 else:
+                    # Fetch default tasks based on accounting method for new client
+                    default_tasks = DefaultTask.query.filter_by(accounting_method=accounting_method).first()
+                    
+                    initial_custom_tasks = {}
+                    if default_tasks and default_tasks.tasks:
+                        current_year = str(datetime.now().year)
+                        initial_custom_tasks[current_year] = default_tasks.tasks
+
                     # Create new client
                     new_client = Client(
                         id=client_no,
@@ -1119,7 +1127,7 @@ def import_clients_csv():
                         accounting_method=accounting_method,
                         status=status,
                         is_inactive=is_inactive,
-                        custom_tasks_by_year={},
+                        custom_tasks_by_year=initial_custom_tasks,
                         finalized_years=[]
                     )
                     db.session.add(new_client)
@@ -1180,11 +1188,11 @@ def init_db_command():
         default_tasks_data = [
             {
                 "accounting_method": "記帳代行",
-                "tasks": ["受付", "入力確認","担当者チェック", "不明点解消", "先生へ報告"]
+                "tasks": ["受付", "入力完了", "担当チェック", "不明投げかけ", "月次完了"]
             },
             {
                 "accounting_method": "自計",
-                "tasks": ["データ受領", "担当者チェック", "不明点解消", "先生へ報告"]
+                "tasks": ["データ受領", "担当チェック", "不明投げかけ", "月次完了"]
             }
         ]
         for data in default_tasks_data:
@@ -1339,6 +1347,26 @@ def reset_database():
         
         db.session.commit()
         print("✅ Initial staff added")
+        
+        # Add default tasks
+        default_tasks_data = [
+            {
+                "accounting_method": "記帳代行",
+                "tasks": ["受付", "入力完了", "担当チェック", "不明投げかけ", "月次完了"]
+            },
+            {
+                "accounting_method": "自計", 
+                "tasks": ["データ受領", "担当チェック", "不明投げかけ", "月次完了"]
+            }
+        ]
+        for data in default_tasks_data:
+            default_task = DefaultTask(
+                accounting_method=data["accounting_method"],
+                tasks=data["tasks"]
+            )
+            db.session.add(default_task)
+        db.session.commit()
+        print("✅ Default tasks added")
         
         # Add sample data
         add_sample_data()

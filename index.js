@@ -475,17 +475,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return textMatch && staffMatch && monthMatch && inactiveMatch;
         });
 
-        // Custom sorting logic: 未入力期間降順 → 決算月今月起点降順
+        // Custom sorting logic: 決算月今月起点降順 → 未入力期間降順
         filteredClients.sort((a, b) => {
-            // まず未入力期間で比較（降順：長い期間が上）
-            const unattendedA = parseInt(a.unattendedMonths.replace('ヶ月', ''));
-            const unattendedB = parseInt(b.unattendedMonths.replace('ヶ月', ''));
-            
-            if (unattendedA !== unattendedB) {
-                return unattendedB - unattendedA; // 降順
-            }
-            
-            // 未入力期間が同じ場合、決算月で比較（今月起点降順）
+            // まず決算月で比較（今月起点降順）
             const currentMonth = new Date().getMonth() + 1; // 現在の月（1-12）
             
             // 今月から始まって降順になるよう調整
@@ -499,7 +491,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const orderA = getMonthOrder(a.fiscal_month);
             const orderB = getMonthOrder(b.fiscal_month);
             
-            return orderA - orderB;
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+            
+            // 決算月が同じ場合、未入力期間で比較（降順：長い期間が上）
+            const unattendedA = parseInt(a.unattendedMonths.replace('ヶ月', ''));
+            const unattendedB = parseInt(b.unattendedMonths.replace('ヶ月', ''));
+            
+            return unattendedB - unattendedA; // 降順
         });
 
         updateSortIcons();
