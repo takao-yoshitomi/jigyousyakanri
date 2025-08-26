@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentEditingStaffs = [];
     let defaultTasks = {}; // State for default tasks
     let appSettings = {}; // State for application settings
+    let filterState = {}; // フィルター状態を保存
 
     const API_BASE_URL = Config.getApiBaseUrl();
 
@@ -77,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addEventListeners();
         populateMonthThresholds(); // Populate month dropdowns
         populateFontFamilySelect(); // Populate font family dropdown
+        loadFilterState(); // フィルター状態をロード
         
         try {
             // Fetch data from backend
@@ -89,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
             applyFontFamily(appSettings.font_family); // Apply font family from settings
 
             populateFilters();
+            applyFilterState(); // 保存されたフィルター状態を適用
             renderClients();
             updateSortIcons();
         } catch (error) {
@@ -171,9 +174,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addEventListeners() {
         // Search and filter listeners
-        searchInput.addEventListener('input', () => renderClients());
-        staffFilter.addEventListener('change', () => renderClients());
-        monthFilter.addEventListener('change', () => renderClients());
+        searchInput.addEventListener('input', () => {
+            saveFilterState();
+            renderClients();
+        });
+        staffFilter.addEventListener('change', () => {
+            saveFilterState();
+            renderClients();
+        });
+        monthFilter.addEventListener('change', () => {
+            saveFilterState();
+            renderClients();
+        });
 
         // Sorting listener
         clientsTableHeadRow.addEventListener('click', handleSortClick);
@@ -463,22 +475,31 @@ document.addEventListener('DOMContentLoaded', () => {
             return textMatch && staffMatch && monthMatch && inactiveMatch;
         });
 
-        // Sorting logic
+        // Custom sorting logic: 未入力期間降順 → 決算月今月起点降順
         filteredClients.sort((a, b) => {
-            let valA = a[currentSortKey];
-            let valB = b[currentSortKey];
-
-            if (currentSortKey === 'fiscal_month') {
-                valA = valA; // Already a number
-                valB = valB; // Already a number
-            } else if (currentSortKey === 'id' || currentSortKey === 'unattendedMonths') {
-                valA = parseFloat(valA);
-                valB = parseFloat(valB);
+            // まず未入力期間で比較（降順：長い期間が上）
+            const unattendedA = parseInt(a.unattendedMonths.replace('ヶ月', ''));
+            const unattendedB = parseInt(b.unattendedMonths.replace('ヶ月', ''));
+            
+            if (unattendedA !== unattendedB) {
+                return unattendedB - unattendedA; // 降順
             }
-
-            if (valA < valB) return currentSortDirection === 'asc' ? -1 : 1;
-            if (valA > valB) return currentSortDirection === 'asc' ? 1 : -1;
-            return 0;
+            
+            // 未入力期間が同じ場合、決算月で比較（今月起点降順）
+            const currentMonth = new Date().getMonth() + 1; // 現在の月（1-12）
+            
+            // 今月から始まって降順になるよう調整
+            function getMonthOrder(month) {
+                // 8月が1、9月が2、...、7月が12になるような順序を作る
+                let order = month - currentMonth + 1;
+                if (order <= 0) order += 12;
+                return order;
+            }
+            
+            const orderA = getMonthOrder(a.fiscal_month);
+            const orderB = getMonthOrder(b.fiscal_month);
+            
+            return orderA - orderB;
         });
 
         updateSortIcons();
@@ -867,6 +888,59 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Database reset error:', error);
             alert(`❌ データベース初期化に失敗しました: ${error.message}`);
+        }
+    }
+
+    // --- Filter State Management ---
+    function loadFilterState() {
+        try {
+            const savedState = localStorage.getItem('clientListFilterState');
+            if (savedState) {
+                filterState = JSON.parse(savedState);
+            }
+        } catch (error) {
+            console.warn('フィルター状態の読み込みに失敗しました:', error);
+            filterState = {};
+        }
+    }
+    
+    function saveFilterState() {
+        try {
+            filterState = {
+                searchText: searchInput.value,
+                staffFilter: staffFilter.value,
+                monthFilter: monthFilter.value
+            };
+            localStorage.setItem('clientListFilterState', JSON.stringify(filterState));
+        } catch (error) {
+            console.warn('フィルター状態の保存に失敗しました:', error);
+        }
+    }
+    
+    function applyFilterState() {
+        if (filterState.searchText !== undefined) {
+            searchInput.value = filterState.searchText;
+        }
+        if (filterState.staffFilter !== undefined) {
+            staffFilter.value = filterState.staffFilter;
+        }
+        if (filterState.monthFilter !== undefined) {
+            monthFilter.value = filterState.monthFilter;
+        }
+        
+        // カスタムドロップダウンの表示更新
+        updateCustomDropdownTrigger(staffFilter);
+        updateCustomDropdownTrigger(monthFilter);
+    }
+    
+    function updateCustomDropdownTrigger(selectElement) {
+        const wrapper = selectElement.closest('.custom-select-wrapper');
+        if (wrapper) {
+            const trigger = wrapper.querySelector('.custom-select-trigger');
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            if (trigger && selectedOption) {
+                trigger.textContent = selectedOption.textContent;
+            }
         }
     }
 
