@@ -6,15 +6,15 @@ const getSupabaseConfig = () => {
     // 本番環境では環境変数から取得
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         return {
-            url: window.SUPABASE_URL || 'https://your-project.supabase.co',
-            anonKey: window.SUPABASE_ANON_KEY || 'your-anon-key'
+            url: window.SUPABASE_URL || 'https://lqwjmlkkdddjnnxnlyfz.supabase.co',
+            anonKey: window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxxd2ptbGtrZGRkam5ueG5seWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyOTI2MjMsImV4cCI6MjA3MTg2ODYyM30.U9OndAw71LEQrYA7KBmBRfmNVtISVDBMvhm8s11wKfg'
         };
     }
     
-    // 開発環境用の設定（後で実際の値に置き換える）
+    // 開発環境用の設定
     return {
-        url: 'https://your-project.supabase.co',
-        anonKey: 'your-anon-key'
+        url: 'https://lqwjmlkkdddjnnxnlyfz.supabase.co',
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxxd2ptbGtrZGRkam5ueG5seWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyOTI2MjMsImV4cCI6MjA3MTg2ODYyM30.U9OndAw71LEQrYA7KBmBRfmNVtISVDBMvhm8s11wKfg'
     };
 };
 
