@@ -215,13 +215,38 @@
         }
     }
 
-    // ボタンにイベント設定
+    // 認証状態チェック
+    async function checkAuth() {
+        try {
+            const { data: { user }, error } = await supabase.auth.getUser();
+            if (error) throw error;
+            
+            if (user) {
+                // ログイン済み
+                document.getElementById('auth-modal').style.display = 'none';
+                console.log('User logged in:', user.email);
+            } else {
+                // 未ログイン - モーダル表示
+                document.getElementById('auth-modal').style.display = 'flex';
+                console.log('User not logged in - showing auth modal');
+            }
+        } catch (error) {
+            console.error('Auth check error:', error);
+            // エラー時もモーダル表示
+            document.getElementById('auth-modal').style.display = 'flex';
+        }
+    }
+
+    // ボタンにイベント設定と認証チェック
     document.addEventListener('DOMContentLoaded', function() {
         const signInButton = document.getElementById('signin-button');
         if (signInButton) {
             signInButton.addEventListener('click', signInWithGoogle);
             console.log('Sign in button event listener added');
         }
+        
+        // 認証状態をチェック
+        checkAuth();
     });
     </script>
 </body>
