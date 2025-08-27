@@ -185,6 +185,44 @@
     </div>
 
     <script src="custom-dropdown.js"></script>
-    <script type="module" src="index-supabase.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+    // Supabase設定
+    const supabaseUrl = 'https://lqwjmlkkdddjnnxnlyfz.supabase.co';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxxd2ptbGtrZGRkam5ueG5seWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyOTI2MjMsImV4cCI6MjA3MTg2ODYyM30.U9OndAw71LEQrYA7KBmBRfmNVtISVDBMvhm8s11wKfg';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+    // 認証機能
+    async function signInWithGoogle() {
+        try {
+            console.log('Starting Google sign in...');
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
+            
+            if (error) {
+                console.error('Sign in error:', error);
+                alert('ログインエラー: ' + error.message);
+            } else {
+                console.log('Sign in success:', data);
+            }
+        } catch (error) {
+            console.error('Sign in exception:', error);
+            alert('ログインに失敗しました: ' + error.message);
+        }
+    }
+
+    // ボタンにイベント設定
+    document.addEventListener('DOMContentLoaded', function() {
+        const signInButton = document.getElementById('signin-button');
+        if (signInButton) {
+            signInButton.addEventListener('click', signInWithGoogle);
+            console.log('Sign in button event listener added');
+        }
+    });
+    </script>
 </body>
 </html>

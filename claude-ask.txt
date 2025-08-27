@@ -1,9 +1,7 @@
-[ContentMain]
-ContentMain.js:18 [ContentService] document.readyState: loading
-index-supabase.html:1 A preload for 'https://jigyousyakanri-eight.vercel.app/index-supabase.js' is found, but is not used because the request credentials mode does not match. Consider taking a look at crossorigin attribute.Understand this warning
-ContentMain.js:5 [ContentService.SetContentInitData] target: { TabId: 922079187, FrameId: 0}
-index-supabase.html:1 A preload for 'https://jigyousyakanri-eight.vercel.app/supabase-client.js' is found, but is not used because the request credentials mode does not match. Consider taking a look at crossorigin attribute.Understand this warning
-index-supabase.js:25 Uncaught TypeError: Cannot read properties of null (reading 'querySelector')
-    at HTMLDocument.<anonymous> (index-supabase.js:25:60)Understand this error
-index-supabase.html:1 The resource https://jigyousyakanri-eight.vercel.app/index-supabase.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.Understand this warning
-index-supabase.html:1 The resource https://jigyousyakanri-eight.vercel.app/supabase-client.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
+ console.log('Auth modal:', document.getElementById('auth-modal'));
+  console.log('Sign in button:', document.getElementById('signin-button'));
+  console.log('Button click event:', document.getElementById('signin-button')?.onclick);
+VM66:1 Auth modal: <div id=​"auth-modal" style=​"display:​ flex;​ position:​ fixed;​ top:​ 0px;​ left:​ 0px;​ width:​ 100%;​ height:​ 100%;​ background:​ rgba(0, 0, 0, 0.5)​;​ z-index:​ 1000;​">​…​</div>​flex
+VM66:2 Sign in button: <button id=​"signin-button" style=​"background:​#4285f4;​ color:​white;​ border:​none;​ padding:​12px 24px;​ border-radius:​4px;​ cursor:​pointer;​ font-size:​16px;​">​ Googleでログイン ​</button>​
+VM66:3 Button click event: null
+undefined
