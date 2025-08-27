@@ -1,20 +1,28 @@
 {
   "version": 2,
-  "name": "jigyousya-frontend",
+  "name": "jigyousya-kanri-supabase",
   "builds": [
     {
-      "src": "index.html",
+      "src": "index-supabase.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "**/*.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "**/*.css", 
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "https://jigyousya-backend.onrender.com/api/$1"
+      "src": "/",
+      "dest": "/index-supabase.html"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/$1"
     }
   ],
   "headers": [
@@ -48,7 +56,7 @@
   "rewrites": [
     {
       "source": "/((?!api).)*",
-      "destination": "/index.html"
+      "destination": "/index-supabase.html"
     }
   ]
 }
