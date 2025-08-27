@@ -215,6 +215,42 @@
         }
     }
 
+    // Supabaseからデータ取得テスト
+    async function loadSupabaseData() {
+        try {
+            console.log('Loading data from Supabase...');
+            
+            // クライアントデータを取得
+            const { data: clients, error: clientError } = await supabase
+                .from('clients')
+                .select('*')
+                .eq('status', 'active');
+                
+            if (clientError) throw clientError;
+            
+            // スタッフデータを取得  
+            const { data: staffs, error: staffError } = await supabase
+                .from('staffs')
+                .select('*');
+                
+            if (staffError) throw staffError;
+            
+            console.log('Clients from Supabase:', clients);
+            console.log('Staffs from Supabase:', staffs);
+            
+            // 簡単な表示テスト
+            if (clients && clients.length > 0) {
+                alert(`Supabaseから${clients.length}件のクライアントデータを取得しました！`);
+            } else {
+                alert('Supabaseにクライアントデータがありません。サンプルデータの投入が必要です。');
+            }
+            
+        } catch (error) {
+            console.error('Supabase data loading error:', error);
+            alert('Supabaseデータ取得エラー: ' + error.message);
+        }
+    }
+
     // 認証状態チェック
     async function checkAuth() {
         try {
@@ -225,6 +261,9 @@
                 // ログイン済み
                 document.getElementById('auth-modal').style.display = 'none';
                 console.log('User logged in:', user.email);
+                
+                // Supabaseからクライアントデータを取得してテスト
+                loadSupabaseData();
             } else {
                 // 未ログイン - モーダル表示
                 document.getElementById('auth-modal').style.display = 'flex';
