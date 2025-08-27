@@ -1,33 +1,9 @@
-
-2025-08-25T19:20:12.713542041Z ==> Detected service running on port 10000
-2025-08-25T19:20:13.165143581Z ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
-2025-08-25T19:22:22.631567378Z ==> Deploying...
-2025-08-25T19:22:34.513672867Z ==> Running 'cd backend && gunicorn --bind 0.0.0.0:$PORT app:app'
-2025-08-25T19:22:47.551162377Z [2025-08-25 19:22:47 +0000] [66] [INFO] Starting gunicorn 23.0.0
-2025-08-25T19:22:47.551646216Z [2025-08-25 19:22:47 +0000] [66] [INFO] Listening at: http://0.0.0.0:10000 (66)
-2025-08-25T19:22:47.551675217Z [2025-08-25 19:22:47 +0000] [66] [INFO] Using worker: sync
-2025-08-25T19:22:47.612360212Z [2025-08-25 19:22:47 +0000] [67] [INFO] Booting worker with pid: 67
-2025-08-25T19:22:47.670776075Z ✅ Database already initialized
-2025-08-25T19:22:47.670795255Z 127.0.0.1 - - [25/Aug/2025:19:22:47 +0000] "HEAD / HTTP/1.1" 200 0 "-" "Go-http-client/1.1"
-2025-08-25T19:22:53.666018676Z ==> Your service is live 🎉
-2025-08-25T19:22:53.845605372Z ==> 
-2025-08-25T19:22:54.020714528Z ==> ///////////////////////////////////////////////////////////
-2025-08-25T19:22:54.193468445Z ==> 
-2025-08-25T19:22:54.371653501Z ==> Available at your primary URL https://jigyousya-backend.onrender.com
-2025-08-25T19:22:54.548399827Z ==> 
-2025-08-25T19:22:54.721873744Z ==> ///////////////////////////////////////////////////////////
-2025-08-25T19:22:57.466030093Z 127.0.0.1 - - [25/Aug/2025:19:22:57 +0000] "GET / HTTP/1.1" 200 50 "-" "Go-http-client/2.0"
-2025-08-25T19:23:20.758327461Z 127.0.0.1 - - [25/Aug/2025:19:23:20 +0000] "GET /api/clients HTTP/1.1" 200 3 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
-2025-08-25T19:23:20.965431178Z 127.0.0.1 - - [25/Aug/2025:19:23:20 +0000] "GET /api/staffs HTTP/1.1" 200 3 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
-2025-08-25T19:23:20.988513221Z 127.0.0.1 - - [25/Aug/2025:19:23:20 +0000] "GET /api/settings HTTP/1.1" 200 3 "https://jigyousya-frontend.onrender.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
-2025-08-25T19:23:53.488680377Z [2025-08-25 19:23:53 +0000] [67] [INFO] Handling signal: term
-2025-08-25T19:23:53.489051432Z [2025-08-25 19:23:53 +0000] [68] [INFO] Worker exiting (pid: 68)
-2025-08-25T19:23:54.702658067Z [2025-08-25 19:23:54 +0000] [67] [INFO] Shutting down: Master
-2025-08-25T19:23:54.702692459Z ✅ Found 1 clients, adding more sample data...
-2025-08-25T19:23:54.702705959Z Found 1 staff members: ['吉冨']
-2025-08-25T19:23:54.702711179Z ℹ️  Client 株式会社サンプル (No.101) already exists
-2025-08-25T19:23:54.702716569Z ⚠️  Staff '鈴木' not found, skipping client テスト商事
-2025-08-25T19:23:54.70272062Z ⚠️  Staff '高橋' not found, skipping client サンプル工業
-2025-08-25T19:23:54.70272522Z ⚠️  Staff '田中' not found, skipping client デモ株式会社
-2025-08-25T19:23:54.70272943Z ⚠️  Staff '渡辺' not found, skipping client 例示有限会社
-2025-08-25T19:23:54.70273357Z ℹ️  No new clients were added
+[ContentMain]
+ContentMain.js:18 [ContentService] document.readyState: loading
+index-supabase.html:1 A preload for 'https://jigyousyakanri-eight.vercel.app/index-supabase.js' is found, but is not used because the request credentials mode does not match. Consider taking a look at crossorigin attribute.Understand this warning
+ContentMain.js:5 [ContentService.SetContentInitData] target: { TabId: 922079187, FrameId: 0}
+index-supabase.html:1 A preload for 'https://jigyousyakanri-eight.vercel.app/supabase-client.js' is found, but is not used because the request credentials mode does not match. Consider taking a look at crossorigin attribute.Understand this warning
+index-supabase.js:25 Uncaught TypeError: Cannot read properties of null (reading 'querySelector')
+    at HTMLDocument.<anonymous> (index-supabase.js:25:60)Understand this error
+index-supabase.html:1 The resource https://jigyousyakanri-eight.vercel.app/index-supabase.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.Understand this warning
+index-supabase.html:1 The resource https://jigyousyakanri-eight.vercel.app/supabase-client.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
