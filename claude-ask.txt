@@ -1,7 +1,20 @@
- console.log('Auth modal:', document.getElementById('auth-modal'));
-  console.log('Sign in button:', document.getElementById('signin-button'));
-  console.log('Button click event:', document.getElementById('signin-button')?.onclick);
-VM66:1 Auth modal: <div id=​"auth-modal" style=​"display:​ flex;​ position:​ fixed;​ top:​ 0px;​ left:​ 0px;​ width:​ 100%;​ height:​ 100%;​ background:​ rgba(0, 0, 0, 0.5)​;​ z-index:​ 1000;​">​…​</div>​flex
-VM66:2 Sign in button: <button id=​"signin-button" style=​"background:​#4285f4;​ color:​white;​ border:​none;​ padding:​12px 24px;​ border-radius:​4px;​ cursor:​pointer;​ font-size:​16px;​">​ Googleでログイン ​</button>​
-VM66:3 Button click event: null
-undefined
+（インデックス）:1 Access to fetch at 'https://jigyousya-backend.onrender.com/api/staffs' from origin 'https://jigyousya-final.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.このエラーを分析
+jigyousya-backend.onrender.com/api/staffs:1  Failed to load resource: net::ERR_FAILEDこのエラーを分析
+index.js:410 Failed to fetch staffs: TypeError: Failed to fetch
+    at fetchStaffs (index.js:404:36)
+    at initializeApp (index.js:87:17)
+    at HTMLDocument.<anonymous> (index.js:948:5)
+fetchStaffs @ index.js:410このエラーを分析
+（インデックス）:1 Access to fetch at 'https://jigyousya-backend.onrender.com/api/settings' from origin 'https://jigyousya-final.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.このエラーを分析
+jigyousya-backend.onrender.com/api/settings:1  Failed to load resource: net::ERR_FAILEDこのエラーを分析
+index.js:429 Failed to fetch settings: TypeError: Failed to fetch
+    at fetchSettings (index.js:418:36)
+    at initializeApp (index.js:88:17)
+    at HTMLDocument.<anonymous> (index.js:948:5)
+fetchSettings @ index.js:429このエラーを分析
+（インデックス）:1 Access to fetch at 'https://jigyousya-backend.onrender.com/api/clients' from origin 'https://jigyousya-final.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.このエラーを分析
+jigyousya-backend.onrender.com/api/clients:1  Failed to load resource: net::ERR_FAILEDこのエラーを分析
+index.js:396 Failed to fetch clients: TypeError: Failed to fetch
+    at fetchClients (index.js:390:36)
+    at initializeApp (index.js:86:17)
+    at HTMLDocument.<anonymous> (index.js:948:5)
