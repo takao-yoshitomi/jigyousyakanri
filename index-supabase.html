@@ -157,6 +157,21 @@
                     <label for="hide-inactive-clients">関与終了は表示しない:</label>
                     <input type="checkbox" id="hide-inactive-clients">
                 </div>
+                <hr style="margin: 20px 0;">
+                <div class="form-group">
+                    <label><strong>認証するアカウント</strong></label>
+                    <div id="authorized-accounts-list" style="margin: 10px 0;">
+                        <!-- 認証アカウント一覧がここに表示される -->
+                    </div>
+                    <div class="add-account-section" style="margin: 10px 0;">
+                        <input type="text" id="new-account-name" placeholder="担当者名">
+                        <input type="email" id="new-account-email" placeholder="メールアドレス">
+                        <button id="add-account-button" type="button" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">追加</button>
+                    </div>
+                    <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                        ※ ここで設定されたメールアドレスでのみログイン可能になります
+                    </div>
+                </div>
             </div>
             <div class="modal-buttons">
                 <button id="save-basic-settings-button">保存</button>
